@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+<channel>
+  <title>Jozef Wagner's Blog</title>
+  <link>http://blog.wagjo.com</link>
+  <description>Low frequency programming related blog of Jozef Wagner.</description>
+  <ttl>1800</ttl>
+
+ <item>
+  <title>Universal and Complement Sets in Dunaj</title>
+  <description>Dunaj is full of small useful features and improvements. One of such features is the introduction of universal and complement sets, an addition which enables the representation of identity elements in reduction functions that handle set items.</description>
+  <link>http://blog.wagjo.com/set.html</link>
+  <guid isPermaLink="true">http://blog.wagjo.com/set.html</guid>
+  <pubDate>Thu, 02 Apr 2015 13:40:00 +0000</pubDate>
+ </item>
+ 
+</channel>
+</rss>
