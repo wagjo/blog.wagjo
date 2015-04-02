@@ -15,13 +15,389 @@
 <h1>Universal and Complement Sets in Dunaj</h1>
 </div>
 <div id="content">
-<header id="dd-header"><div id="dd-logo"><a href="http://blog.wagjo.com/"><img src="logo.png"></img>Jozef Wagner</a></div><div id="dd-mmenu"><a class="dd-mmlink" href="http://wagjo.com"><i class="fa fa-home dd-mmsh"></i> <span>Homepage</span></a><a class="dd-mmlink" href="http://blog.wagjo.com"><i class="fa fa-pencil dd-mmsh"></i> <span>Blog</span></a><a class="dd-mmlink" href="http://blog.wagjo.com/feed.xml"><i class="fa fa-rss dd-mmsh"></i> <span>RSS Feed</span></a></div></header><div id="dd-flex"><section id="dd-content"><div class="dd-over" tabindex="-1" id="dd-focus"><div id="header"><h1 id="dd-top">Universal and Complement Sets in Dunaj</h1><div class="details">Copyright © 2015, &nbsp;<span class="author">Jozef Wagner</span><br></div></div><div class="paragraph">
-<p>TODO</p>
+<header id="dd-header"><div id="dd-logo"><a href="http://www.wagjo.com/"><img src="logo.png"></img>Jozef Wagner</a></div><div id="dd-mmenu"><a class="dd-mmlink" href="http://wagjo.com"><i class="fa fa-home dd-mmsh"></i> <span>Homepage</span></a><a class="dd-mmlink" href="http://blog.wagjo.com"><i class="fa fa-pencil dd-mmsh"></i> <span>Blog</span></a><a class="dd-mmlink" href="http://wagjo.com/consulting"><i class="fa fa-dot-circle-o dd-mmsh"></i> <span>Consulting Services</span></a><a class="dd-mmlink" href="http://blog.wagjo.com/feed.xml"><i class="fa fa-rss dd-mmsh"></i> <span>RSS Feed</span></a></div></header><div id="dd-flex"><section id="dd-content"><div class="dd-over" tabindex="-1" id="dd-focus"><div id="header"><h1 id="dd-top">Universal and Complement Sets in Dunaj</h1><div class="details">Copyright © 2015, &nbsp;<span class="author">Jozef Wagner</span><br></div></div><div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>My latest open source project called <a href="http://www.dunaj.org">Dunaj</a> aims
+to provide an alternative core API for Clojure. I&#8217;ve written a lot
+about it&#8217;s <a href="http://www.dunaj.org/guide.html">main features</a> and
+<a href="http://www.dunaj.org/rationale">goals</a>, but Dunaj is also full of
+small useful features and improvements.
+One of such features is the introduction of universal and complement
+sets, an addition which enables the representation of identity
+elements in reduction functions that handle set items.</p>
 </div>
 <div class="paragraph">
-<p>This post was published on March 2015</p>
+<p>But first, a little detour.</p>
 </div>
-<div id="blo"></div><div id="disqus_thread"></div><script>var disqus_shortname = 'wagjo'; var disqus_identifier = 'set'; (function() {
+<div class="paragraph">
+<p>The reduction of a collection is among the most important features
+in Clojure, and a lot of effort has been made to make the reduction
+simple, efficient and easy to use. While the <code>reduce</code> function is
+in the Clojure since it&#8217;s beginning, each new Clojure version further
+enhances the reduction process.
+One particularly notable thing is a gradual change of the reduction
+semantics with regards to the initial value.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_the_story_of_reduce">The story of reduce</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <a href="http://clojure.github.io/clojure/clojure.core-api.html#clojure.core/reduce"><code>reduce</code></a>
+function, also known as <a href="http://en.wikipedia.org/wiki/Fold_%28higher-order_function%29">left fold</a>, takes 2 or 3 arguments, with initial value being the
+optional one.</p>
+</div>
+<div class="listingblock">
+<div class="title">Using <code>reduce</code> to compute the sum of vector of numbers</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">reduce</span> <span class="keyword">+</span> <span class="integer">0</span> [<span class="integer">1</span> <span class="integer">2</span> <span class="integer">3</span>])
+<span class="comment">;;=&gt; 6</span>
+
+(<span class="keyword">reduce</span> <span class="keyword">+</span> [<span class="integer">1</span> <span class="integer">2</span> <span class="integer">3</span>])
+<span class="comment">;;=&gt; 6</span></pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The reduction process iteratively applies provided function <code><em>f</em></code> to
+two arguments: the intermediate result of the reduction and the next
+unprocessed item in a given collection <code><em>coll</em></code>. At the beginning of
+the reduction, the initial value <code><em>val</em></code> is used in place of the
+intermediate result.
+The first code snippet above is efectivelly the same as
+calling <code>(+ (+ (+ 0 1) 2) 3)</code></p>
+</div>
+<div class="listingblock">
+<div class="title">Illustrating the reduction process with a threading macro</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">-&gt;</span> (<span class="keyword">+</span> <span class="integer">0</span> <span class="integer">1</span>)
+    (<span class="keyword">+</span> <span class="integer">2</span>)
+    (<span class="keyword">+</span> <span class="integer">3</span>))
+<span class="comment">;;=&gt; 6</span></pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The initial value <code><em>val</em></code> does not have to be provided.
+Clojure follows the semantics of the Common Lisp, that <a href="http://www.lispworks.com/documentation/lw60/CLHS/Body/f_reduce.htm">states</a>:</p>
+</div>
+<div class="quoteblock">
+<blockquote>
+If <code>initial-value</code> is supplied, it is logically placed before the
+subsequence and included in the reduction operation.
+</blockquote>
+<div class="attribution">
+&#8212; Function REDUCE<br>
+<cite>Common Lisp HyperSpec</cite>
+</div>
+</div>
+<div class="paragraph">
+<p>This means that the reduction process starts by applying <code><em>f</em></code>
+to the first two collection items, and the initial value is treated as
+a first item in the provided collection.
+Easy at first, this behavior has multiple edge cases that have
+to be treated specially, and Clojure consistently follows Common Lisp
+in the way how these cases are handled.</p>
+</div>
+<table class="tableblock frame-all grid-all spread">
+<caption class="title">Table 1. Different behavior of <code>reduce</code></caption>
+<colgroup>
+<col style="width: 16%;">
+<col style="width: 16%;">
+<col style="width: 66%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-center valign-top"><code><em>val</em></code></th>
+<th class="tableblock halign-center valign-top"><code><em>coll</em></code></th>
+<th class="tableblock halign-left valign-top"><code>reduce</code> behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock">supplied</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">not empty</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">normal operation</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock">supplied</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">empty</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">returns <code><em>val</em></code>, <code><em>f</em></code> is not called</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock">not given</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">empty</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code><em>f</em></code> is called with no arguments</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock">not given</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">&gt; 1 items</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code><em>f</em></code> is called on first 2 arguments, then proceed as usual</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock">not given</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">1 item only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">first item is returned, <code><em>f</em></code> is not called</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The rules are not that hard to understand and the behavior is not
+surprising. What this complicates is however the underlying
+implementation of <code>reduce</code>.</p>
+</div>
+<div class="sect2">
+<h3 id="_simple_easy_and_fast_pick_two">Simple, easy and fast. Pick two.</h3>
+<div class="paragraph">
+<p>The <a href="https://github.com/clojure/clojure/blob/1.0.x/src/clj/clojure/core.clj#L516">initial implementation</a> of <code>reduce</code> converted input <code><em>coll</em></code>
+into seq and handled all the special cases by itself. As the
+generic reduction of seqs is not a very efficient operation,
+collection types that can do better could implement
+<a href="https://github.com/clojure/clojure/blob/1.0.x/src/jvm/clojure/lang/IReduce.java"><code>IReduce</code></a> interface and provide more performant
+implementation. It is important to note that regardless of the
+underlying collection type, the conversion to seq happened every
+time and the custom implementations of <code>IReduce</code> had to provide 2
+separate implementations of reduce, based on whether the initial value
+was given or not.</p>
+</div>
+<div class="paragraph">
+<p>In the version 1.1, The role of IReduce was diminished and chunked
+sequences were introduced in an attempt to provide fast reductions
+with less boilerplate. Collection types implementing
+<a href="https://github.com/clojure/clojure/blob/1.1.x/src/jvm/clojure/lang/IChunk.java#L19"><code>IChunk</code></a> interface only needed to provide one version
+of reduce, and could assume that the initial value is always given.
+Clojure 1.3 have increased the flexibility of custom reduce
+implementations by providing a level of indirection and introduced
+<a href="https://github.com/clojure/clojure/blob/1.3.x/src/clj/clojure/core/protocols.clj#L11"><code>InternalReduce</code></a> protocol. Once again, custom
+implementations only had to handle case with the initial value
+provided.</p>
+</div>
+<div class="paragraph">
+<p>In an attempt to remove the initial step of conversion to seq
+completely, a new protocol called
+<a href="https://github.com/clojure/clojure/blob/clojure-1.4.0/src/clj/clojure/core/protocols.clj#L13"><code>CollReduce</code></a> has been created in Clojure 1.4,
+which however has 2 methods, one without initial value and one
+for cases where the initial value was provided.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_what_is_a_collection_anyway">What is a collection anyway?</h3>
+<div class="paragraph">
+<p>The concept of reducers introduced in Clojure 1.5 made the reduction
+process a central part of the collection related API. The collection
+itself was abstracted as something that is reducible, and whole new
+API was built around the concept of composing and reducing such
+collections. There was no longer a universal reduce algorithm and
+the way how collection is reduced was pushed completely to the
+collection itself.</p>
+</div>
+<div class="paragraph">
+<p>With this however, the old semantics of <code>reduce</code> and its edge cases
+complicate the implementation and hinder the composability of
+reducers. To solve this, a separate <a href="http://clojure.github.io/clojure/clojure.core-api.html#clojure.core.reducers/reduce"><code>clojure.core.reducers/reduce</code></a> function was introduced, with a slight change in
+semantics. A function <code><em>f</em></code> is called with no arguments whenever
+there is no initial value provided.</p>
+</div>
+<div class="paragraph">
+<p>The upcoming transducers feature in Clojure 1.7 will again change
+the way how <code>reduce</code> works. Clojure has come a full circle and
+it once again checks whether <code><em>coll</em></code> implements <code>IReduce</code>
+interface. It is now understood that the new reduce semantics
+introduced in 1.5 <a href="http://clojure-log.n01se.net/date/2015-03-25.html#16:24d">are superior</a> and a separate interface called
+<a href="https://github.com/clojure/clojure/blob/master/src/jvm/clojure/lang/IReduceInit.java"><code>IReduceInit</code></a> was created to handle new reduction
+semantics in a more clean and simple way.</p>
+</div>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Collections in Dunaj</div>
+<div class="paragraph">
+<p>As Dunaj provides an alternative core API, it could break free from
+the complicated set of reduction related protocols and interfaces, and
+provides single <a href="http://www.dunaj.org/dunaj.coll.spi.html#IRed"><code>IRed</code></a>
+protocol that performs the reduction. The resulting design is
+far more simpler and easier to understand, and together with
+batched reduction provides even more performant reductions.</p>
+</div>
+<div class="paragraph">
+<p>For more information, see write-ups about
+<a href="http://www.dunaj.org/day5.html">reducers first</a> approach and
+<a href="http://www.dunaj.org/day6.html">host optimizations</a> that were added in
+Dunaj. More details about mechanisms of Dunaj&#8217;s handling of collection
+will be subject to upcoming blog posts.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_rediscovering_monoids">Rediscovering monoids</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>reduce</code> function takes three arguments: the reduction function <code><em>f</em></code>,
+the initial value <code><em>val</em></code> and the (reducible) collection <code><em>coll</em></code>.</p>
+</div>
+<div class="listingblock">
+<div class="title">Function signature for <code>reduce</code></div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">reduce</span> f coll)
+(<span class="keyword">reduce</span> f <span class="keyword">val</span> coll)</pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The current trend in Clojure is that the reduction function <code><em>f</em></code>
+should provide both a binary reduction operation and an identity
+element, returned when the <code><em>f</em></code> is called with no arguments.
+This will be even more desirable with the introduction of
+transducers that are coming in Clojure 1.7.
+Clojure&#8217;s collection API is now slowly being enriched with
+<a href="https://github.com/clojure/clojure/commit/2a09172e0c3285ccdf79d1dc4d399d190678b670#diff-d951a5cd799ae841ffcc6b45598180dbR83">support for identity
+elements</a> into functions such as conj.</p>
+</div>
+<div class="paragraph">
+<p>By introducing Universal and Complement Sets, Dunaj enables the
+creation of reduction functions that work on sets and provide sane
+identity element. This allows for seamless and streamlined set
+handling in reducers and transducers.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">reduce</span> dunaj.set/intersection [#{<span class="integer">0</span> <span class="integer">1</span> <span class="integer">2</span>} #{<span class="integer">1</span> <span class="integer">2</span> <span class="integer">3</span>} #{<span class="integer">2</span> <span class="integer">3</span> <span class="integer">4</span>}])
+<span class="comment">;;=&gt; #{2}</span></pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_universal_and_complement_sets">Universal and Complement Sets</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Universal set is defined as a set that contains all objects.
+Defined in <a href="http://www.dunaj.org/dunaj.set.api.html#U"><code>dunaj.set/U</code></a>,
+the universal set can be used in any collection or set related
+functions. For cases where the usage of universal set is not
+appropriate, an exception is thrown.
+Dunaj uses <code>𝕌</code> as a notation for the universal set.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+</pre></td>
+  <td class="code"><pre>dunaj.set/U
+<span class="comment">;;=&gt; 𝕌</span>
+
+(<span class="keyword">conj</span> dunaj.set/U <span class="symbol">:foo</span>)
+<span class="comment">;;=&gt; 𝕌</span>
+
+(<span class="keyword">seq</span> dunaj.set/U)
+<span class="comment">;; Unhandled java.lang.UnsupportedOperationException: seq is not supported on universal set</span></pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Universal set is used as an identity element for <a href="http://www.dunaj.org/dunaj.set.api.html#intersection"><code>dunaj.set/intersection</code></a> function.</p>
+</div>
+<div class="paragraph">
+<p>In addition to the Universal set, Dunaj provides the implementation
+for absolute complement sets, that represent sets that contain all
+objects except ones that are explicitly mentioned by enumeration.
+Dunaj uses a superscript <code>ᶜ</code> suffix for the notation of complement
+sets.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+<strong>10</strong>
+11
+12
+13
+14
+15
+16
+17
+18
+19
+<strong>20</strong>
+21
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">ns</span> <span class="namespace">foo.bar</span>
+  (<span class="symbol">:api</span> dunaj)
+  (<span class="symbol">:require</span> [dunaj.set <span class="symbol">:as</span> ds]))
+
+(ds/set-complement #{})
+<span class="comment">;;=&gt; 𝕌</span>
+
+(ds/difference ds/U #{<span class="integer">1</span> <span class="integer">2</span>})
+<span class="comment">;;=&gt; #{1 2}ᶜ</span>
+
+(ds/union #{<span class="integer">1</span>} (<span class="keyword">disj</span> ds/U <span class="integer">3</span>) (<span class="keyword">disj</span> ds/U <span class="integer">4</span> <span class="integer">3</span>) #{<span class="integer">4</span>})
+<span class="comment">;;=&gt; #{3}ᶜ</span>
+
+(ds/union (<span class="keyword">disj</span> ds/U <span class="integer">3</span> <span class="integer">4</span>) (<span class="keyword">disj</span> ds/U <span class="integer">4</span>) #{<span class="integer">4</span>})
+<span class="comment">;;=&gt; 𝕌</span>
+
+(ds/intersection (<span class="keyword">disj</span> ds/U <span class="integer">3</span>) (<span class="keyword">disj</span> ds/U <span class="integer">4</span> <span class="integer">3</span>))
+<span class="comment">;;=&gt; #{4 3}ᶜ</span>
+
+(ds/intersection #{<span class="integer">4</span> <span class="integer">5</span>} (<span class="keyword">disj</span> ds/U <span class="integer">3</span> <span class="integer">5</span>) #{<span class="integer">3</span> <span class="integer">4</span>})
+<span class="comment">;;=&gt; #{4}</span></pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The API related to sets is in Dunaj defined in the <a href="http://www.dunaj.org/dunaj.set.api.html"><code>dunaj.set</code></a> namespace. The implementation
+of universal and complement sets can be found in the respective
+<a href="https://github.com/dunaj-project/dunaj/blob/master/src/clj/dunaj/set.clj"><code>dunaj/set.clj</code></a> file.</p>
+</div>
+<hr>
+<div class="paragraph">
+<p>This post was published on April 2015. Back to the <a href="http://blog.wagjo.com/">Blog home</a></p>
+</div>
+<div id="blo"></div>
+</div>
+</div><div id="disqus_thread"></div><script>var disqus_shortname = 'wagjo'; var disqus_identifier = 'set'; (function() {
                     var dsq = document.createElement('script');
                     dsq.type = 'text/javascript'; dsq.async = true;
                     dsq.src = '//' + disqus_shortname +
@@ -31,7 +407,7 @@
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-04-01 12:07:56 CEST
+Last updated 2015-04-02 15:34:48 CEST
 </div>
 </div>
 </body>

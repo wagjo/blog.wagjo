@@ -867,7 +867,7 @@ a.link { padding-top: 1em; }
 
 #dd-ns-nav { display: flex; flex-direction: column; background-color: #eee; border-left: 1px solid #bbb; }
 
-.dd-over { overflow-y: auto; padding: 0em; }
+.dd-over { padding: 0em; }
 
 .article > #header { display: none; }
 
