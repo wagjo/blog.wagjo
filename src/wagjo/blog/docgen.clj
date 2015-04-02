@@ -24,7 +24,7 @@
    :proj-name "Jozef Wagner"
    :no-doc-title true
    :disqus "wagjo"
-   :proj-url "http://blog.wagjo.com/"
+   :proj-url "http://www.wagjo.com/"
    :copy-years "2015,"
    :additional-copyright
    "2008, 2015, Rich Hickey and Clojure contributors"
@@ -34,6 +34,8 @@
      :name "Homepage" :icon :fa-home}
     {:url "http://blog.wagjo.com"
      :name "Blog" :icon :fa-pencil}
+    {:url "http://wagjo.com/consulting"
+     :name "Consulting Services" :icon :fa-dot-circle-o}
     {:url "http://blog.wagjo.com/feed.xml"
      :name "RSS Feed" :icon :fa-rss}]
    :static-pages
@@ -48,7 +50,7 @@
 
   []
 
-  (dunaj.doc/gen-static blog-config)
 
+  (dunaj.doc/gen-static blog-config)
 
 )
