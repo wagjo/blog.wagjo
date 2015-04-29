@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge"><![endif]-->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 1.5.2">
+<title>Markov Text Generator in Dunaj</title>
+<link rel="stylesheet" href="./dd.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.2.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="./coderay-asciidoctor.css">
+</head>
+<body class="article">
+<div id="header">
+<h1>Markov Text Generator in Dunaj</h1>
+</div>
+<div id="content">
+<header id="dd-header"><div id="dd-logo"><a href="http://www.wagjo.com/"><img src="logo.png"></img>Jozef Wagner</a></div><div id="dd-mmenu"><a class="dd-mmlink" href="http://wagjo.com"><i class="fa fa-home dd-mmsh"></i> <span>Homepage</span></a><a class="dd-mmlink" href="http://blog.wagjo.com"><i class="fa fa-pencil dd-mmsh"></i> <span>Blog</span></a><a class="dd-mmlink" href="http://wagjo.com/consulting"><i class="fa fa-dot-circle-o dd-mmsh"></i> <span>Consulting Services</span></a><a class="dd-mmlink" href="http://blog.wagjo.com/feed.xml"><i class="fa fa-rss dd-mmsh"></i> <span>RSS Feed</span></a></div></header><div id="dd-flex"><section id="dd-content"><div class="dd-over" tabindex="-1" id="dd-focus"><div id="header"><h1 id="dd-top">Markov Text Generator in Dunaj</h1><div class="details">Copyright © 2015, &nbsp;<span class="author">Jozef Wagner</span><br></div></div><div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>I recently needed a simple and straightforward mechanism to
+generate a bunch of genuinely looking sentences. I ended up using
+Markov Chains and as I had lots of fun with it, I&#8217;ve decided to
+write a post about Markov Text Generator and its implementation in
+<a href="http://www.dunaj.org/">Dunaj</a>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Dunaj is an alternative core API for
+<a href="http://www.clojure.org/">Clojure</a>. If you are new to
+Dunaj, please check out its <a href="http://www.dunaj.org/">homepage</a> and a
+<a href="http://www.dunaj.org/guide.html">crash course for Clojure developers</a>.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>In this post I give a quick introduction on how Markov Chains are used
+to generate random sentences. Then I will
+walk through the implementation of a sentence generator in Dunaj and
+at the end I have prepared a small game, where you can guess
+the source novel for generated sentences.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_markov_text_generator">Markov text generator</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The usual definition of
+<a href="http://en.wikipedia.org/wiki/Markov_chain">Markov chain</a> is that it is
+a discrete-time stochastic process with finite states where the
+probability of the next step depends only on the current state.
+The previous states do not influence the transition probability in
+any way. This feature of Markov chains is called a
+<a href="http://en.wikipedia.org/wiki/Markov_property">Markov property</a>.</p>
+</div>
+<div class="paragraph">
+<p>Markov Chains are often used to generate text which mimics the
+document that was used to generate the respective Markov Chain.
+These Markov Text Generators are quite enjoyable to develop and work
+with, as they often produce hilarious results.
+As an introductory example, lets take the following old poem from
+<a href="http://www.gutenberg.org/ebooks/26197">The Nursery Rhyme Book</a> to
+generate Markov Chain.</p>
+</div>
+<div class="verseblock">
+<pre class="content">I love sixpence, pretty little sixpence,
+I love sixpence better than my life.
+I spent a penny of it, I spent another,
+And took fourpence home to my wife.
+
+Oh, my little fourpence, pretty little fourpence,
+I love fourpence better than my life.
+I spent a penny of it, I spent another,
+And I took twopence home to my wife.
+
+Oh, my little twopence, my pretty little twopence,
+I love twopence better than my life.
+I spent a penny of it, I spent another,
+And I took nothing home to my wife.
+
+Oh, my little nothing, my pretty little nothing,
+What will nothing buy for my wife.
+I have nothing, I spend nothing,
+I love nothing better than my wife."</pre>
+<div class="attribution">
+&#8212; I love sixpence<br>
+<cite>The Nursery Rhyme Book</cite>
+</div>
+</div>
+<div class="paragraph">
+<p>Input text is parsed into a sequence of tokens, such as words.
+Adjacent tokens define transitions from one state to another, where
+token serves as an identifier of a state. There is one starting
+state and usually there is a set of special tokens that denotes the
+end of a sentence.</p>
+</div>
+<div class="paragraph">
+<p>The above poem has 674 characters, and consists of 128 tokens, 35 of
+which are unique. The resulting Markov Chain will thus have 35 states.
+Tokens with the largest number of unique transitions are <code>I</code>, <code>love</code>,
+<code>little</code> and <code>my</code>. Each transition is assigned a probability based on
+how many time this transition was found in a sample text compared to
+other transitions for a given state. Following graph (generated with
+<a href="https://github.com/ztellman/rhizome">rhizome</a>) shows the complete
+Markov Chain:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="markov.png" alt="Generated Markov Chain">
+</div>
+</div>
+<div class="paragraph">
+<p>To generate random sentence from a Markov Chain, the generator
+begins at a starting state and walks through the graph according
+to given transition probabilities, until it hits one of the
+ending states. The recorded sequence of states will form the contents
+of the generated sentence.</p>
+</div>
+<div class="paragraph">
+<p>Sentences generated from Markov Chain mimic the source document, but
+are often nonsensical, and the generator may cycle for quite a long
+time before it ends. But sometimes the generated sentences are
+genuinely looking and even quite amusing. Following list shows
+examples of sentences generated from above Markov Chain:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>"Oh, my life."</p>
+</li>
+<li>
+<p>"I spent another, And took fourpence home to my wife."</p>
+</li>
+<li>
+<p>"I love fourpence better than my wife."</p>
+</li>
+<li>
+<p>"I spend nothing, my little fourpence, I spent a penny of it, I spent another, And I spent a penny of it, I spent a penny of it, I spend nothing, I spend nothing, What will nothing better than my little fourpence, I love sixpence, I took nothing home to my little fourpence, I spent a penny of it, I love nothing home to my little nothing, What will nothing buy for my wife."</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_implementing_markov_chains">Implementing Markov Chains</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The implementation of Markov Text Generator can be divided into four
+parts; fetching the sample data, parsing it into a sequence of tokens,
+the construction of Markov Chain, and the generation of
+a random sentence.</p>
+</div>
+<div class="paragraph">
+<p>The complete source code can be found at <a href="https://github.com/dunaj-project/try.markov">dunaj-project/try.markov</a> repository,
+in the <a href="https://github.com/dunaj-project/try.markov/blob/master/src/try/markov_naive.clj">markov_naive.clj</a> file.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+In order to keep the code in this tutorial short and
+understandable for newcomers, many performance improvements are
+omitted.
+</td>
+</tr>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_sample_text">Sample text</h3>
+<div class="paragraph">
+<p>For this tutorial, we will be using Melville&#8217;s famous novel
+<a href="http://www.gutenberg.org/ebooks/2701">Moby-Dick</a> as
+a source document for the construction of Markov Chain.</p>
+</div>
+<div class="listingblock">
+<div class="title">load text from a file on a classpath</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+<strong>10</strong>
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">def</span> <span class="function">text</span>
+  (with-scope
+    (<span class="keyword">str</span> (<span class="keyword">slurp</span> (classpath <span class="string"><span class="delimiter">&quot;</span><span class="content">try/document/moby_dick.txt</span><span class="delimiter">&quot;</span></span>)))))
+<span class="comment">;;=&gt; #'try.markov-naive/text</span>
+
+(<span class="keyword">count</span> text)
+<span class="comment">;;=&gt; 1210052</span>
+
+(pp! text)
+<span class="comment">;; &quot;﻿Call me Ishmael. Some years ago--never mind how long precisely--having\r\nlittle or no money in my purse, and nothing particular to interest me on\r\nshore, I thought I would sail about a little and see ...&quot;</span></pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The above code loads the contents of the file into the string and
+queries the size and the first few words of the loaded novel.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>As the file is placed on a project&#8217;s classpath, we are using
+Dunaj&#8217;s <a href="http://www.dunaj.org/dunaj.resource.host.api.html#classpath"><code>classpath</code></a> function to acquire resource for this file. For resources
+that are stored on a local filesystem, a <a href="http://www.dunaj.org/dunaj.resource.file.api.html#file"><code>file</code></a> function should be used instead.</p>
+</li>
+<li>
+<p>The <a href="http://www.dunaj.org/dunaj.resource.api.html#slurp"><code>slurp</code></a>
+function in Dunaj must run inside an explicit scope, so that no
+resources are leaked.</p>
+</li>
+<li>
+<p>Dunaj&#8217;s <code>slurp</code> returns a collection recipe instead of a string, so
+we also need to call
+<a href="http://www.dunaj.org/dunaj.string.api.html#str"><code>str</code></a> explicitly in
+order to load whole file into memory and represent it as a string.
+In practice, we would process the result from <code>slurp</code> directly
+without the intermediate conversion into the string, which would
+give us a boost in performance, would use less memory, and would
+enable us to process arbitrarily large data.</p>
+</li>
+</ul>
+</div>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Resources in Dunaj</div>
+<div class="paragraph">
+<p>For more information about how Dunaj handles resources, see following
+documentation:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="http://www.dunaj.org/resources.html" class="bare">http://www.dunaj.org/resources.html</a></p>
+</li>
+<li>
+<p><a href="http://www.dunaj.org/day8.html" class="bare">http://www.dunaj.org/day8.html</a></p>
+</li>
+<li>
+<p><a href="http://www.dunaj.org/dunaj.resource.api.html#with_scope" class="bare">http://www.dunaj.org/dunaj.resource.api.html#with_scope</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_word_tokenizer">Word tokenizer</h3>
+<div class="paragraph">
+<p>In the next step, we need to transform a sequence of characters into
+the sequence of tokens. Dunaj provides dedicated facilities for
+<a href="http://www.dunaj.org/day7.html">data formatting</a>, that include parser
+and tokenizer engines.</p>
+</div>
+<div class="paragraph">
+<p>Dunaj&#8217;s tokenizer engine uses <a href="http://www.dunaj.org/dunaj.format.parser.spi.html#IParserMachineFactory">parser machine factory</a> to dispatch
+items of the input collection of characters into a collection of
+tokens. The following snippet of code shows the definition of a word
+tokenizer machine factory that will be used to parse our text:</p>
+</div>
+<div class="listingblock">
+<div class="title">Word tokenizer</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+<strong>10</strong>
+11
+12
+13
+14
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">def</span> <span class="function">word-tokenizer</span>
+  <span class="string"><span class="delimiter">&quot;</span><span class="content">A tokenizer machine factory for words.</span><span class="delimiter">&quot;</span></span>
+  (<span class="keyword">reify</span>
+    IParserMachineFactory
+    (-parser-config [this]
+      {})
+    (-parser-from-type [this]
+      (keyword-&gt;class <span class="symbol">:char</span>))
+    (-dispatch-tokenizer [this config state item]
+      (<span class="keyword">cond</span> (word-char? item) (word-token item)
+            (<span class="keyword">=</span> item <span class="char">\.</span>) <span class="symbol">:stop-dot</span>
+            (<span class="keyword">=</span> item <span class="char">\!</span>) <span class="symbol">:stop-bang</span>
+            (<span class="keyword">=</span> item <span class="char">\?</span>) <span class="symbol">:stop-qmark</span>
+            <span class="symbol">:else</span> this)))</pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Termination characters are transformed into keyword tokens, and
+a <code>word-token</code> function is used to construct a tokenizer machine
+that will extract one word token from the input. As Dunaj&#8217;s
+data formatting facilities are focused on performance, the
+implementations of tokenizer machines will be given their input
+in form of a host specific low level data containers, called batches
+(in JVM they are implemented as NIO <a href="https://docs.oracle.com/javase/8/docs/api/java/nio/Buffer.html">Buffers</a>). Batches are mutable containers
+and must be handled in a less functional way than the rest of the
+code. The added benefit is the very efficient processing, that
+can handle large amounts of data very efficiently, both in terms
+of speed and memory use.</p>
+</div>
+<div class="listingblock">
+<div class="title">Word token</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+<strong>10</strong>
+11
+12
+13
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">defn</span> ^<span class="symbol">:private</span> word-token
+  <span class="string"><span class="delimiter">&quot;</span><span class="content">Returns new instance of word tokenizer machine that contains item.</span><span class="delimiter">&quot;</span></span>
+  [item]
+  (<span class="keyword">let</span> [word-ref (<span class="keyword">atom</span> [item])]
+    (<span class="keyword">reify</span>
+      ITokenizerMachine
+      (-analyze-batch! [this bm batch]
+        (<span class="keyword">loop</span> [c (next-char! batch)]
+          (<span class="keyword">cond</span>
+            (<span class="keyword">nil?</span> c) this
+            (word-char? c) (<span class="keyword">do</span> (alter! word-ref <span class="keyword">conj</span> c) (<span class="keyword">recur</span> (next-char! batch)))
+            <span class="symbol">:else</span> (<span class="keyword">do</span> (unread-char! batch) (<span class="keyword">str</span> @word-ref)))))
+      (-analyze-eof! [this] (<span class="keyword">str</span> @word-ref)))))</pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The actual parsing is performed with <a href="http://www.dunaj.org/dunaj.format.parser.api.html#tokenizer_engine"><code>tokenize-engine</code></a> function which
+returns a collection recipe that contains parsed tokens. Note that
+<code>tokenizer-engine</code> fully supports transducers and will return one
+when no collection is given. The following code shows the actual
+parsing and the examination of resulting collection.</p>
+</div>
+<div class="listingblock">
+<div class="title">Parse text into words</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">def</span> <span class="function">words</span> (tokenizer-engine word-tokenizer text))
+<span class="comment">;;=&gt; #'try.markov-naive/words</span>
+
+(<span class="keyword">count</span> words)
+<span class="comment">;;=&gt; 221634</span>
+
+(<span class="keyword">seq</span> (<span class="keyword">take</span> <span class="integer">45</span> words))
+<span class="comment">;;=&gt; (&quot;Call&quot; &quot;me&quot; &quot;Ishmael&quot; :stop-dot &quot;Some&quot; &quot;years&quot; &quot;ago&quot; &quot;never&quot; &quot;mind&quot; &quot;how&quot; &quot;long&quot; &quot;precisely&quot; &quot;having&quot; &quot;little&quot; &quot;or&quot; &quot;no&quot; &quot;money&quot; &quot;in&quot; &quot;my&quot; &quot;purse,&quot; &quot;and&quot; &quot;nothing&quot; &quot;particular&quot; &quot;to&quot; &quot;interest&quot; &quot;me&quot; &quot;on&quot; &quot;shore,&quot; &quot;I&quot; &quot;thought&quot; &quot;I&quot; &quot;would&quot; &quot;sail&quot; &quot;about&quot; &quot;a&quot; &quot;little&quot; &quot;and&quot; &quot;see&quot; &quot;the&quot; &quot;watery&quot; &quot;part&quot; &quot;of&quot; &quot;the&quot; &quot;world&quot; :stop-dot)</span></pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_markov_chain">Markov Chain</h3>
+<div class="paragraph">
+<p>For the actual representation of a Markov Chain, a persistent hash
+map will be used. First we create a collection of transitions and
+then we will use this collection to construct a map, that will have
+a following structure:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+</pre></td>
+  <td class="code"><pre>{<span class="string"><span class="delimiter">&quot;</span><span class="content">foo</span><span class="delimiter">&quot;</span></span> [<span class="string"><span class="delimiter">&quot;</span><span class="content">bar</span><span class="delimiter">&quot;</span></span> <span class="string"><span class="delimiter">&quot;</span><span class="content">baz</span><span class="delimiter">&quot;</span></span> <span class="string"><span class="delimiter">&quot;</span><span class="content">bar</span><span class="delimiter">&quot;</span></span> <span class="string"><span class="delimiter">&quot;</span><span class="content">bar</span><span class="delimiter">&quot;</span></span>]
+ <span class="string"><span class="delimiter">&quot;</span><span class="content">bar</span><span class="delimiter">&quot;</span></span> [<span class="symbol">:stop-dot</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">foo</span><span class="delimiter">&quot;</span></span> <span class="string"><span class="delimiter">&quot;</span><span class="content">foo</span><span class="delimiter">&quot;</span></span>]
+ <span class="string"><span class="delimiter">&quot;</span><span class="content">baz</span><span class="delimiter">&quot;</span></span> [<span class="string"><span class="delimiter">&quot;</span><span class="content">foo</span><span class="delimiter">&quot;</span></span> <span class="symbol">:stop-dot</span>]}</pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Keys in the map represent the state of a Markov Chain and the vector
+of tokens associated with a given key denotes all possible
+transitions from that state. Token may be included more than once,
+which reflects its probability to be used as a next state.
+The actual implementation is pretty straightforward:</p>
+</div>
+<div class="listingblock">
+<div class="title">Markov chain</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+<strong>10</strong>
+11
+12
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">defn</span> <span class="function">assoc-transition</span>
+  <span class="string"><span class="delimiter">&quot;</span><span class="content">Returns markov chain with cur-&gt;nxt transition added.</span><span class="delimiter">&quot;</span></span>
+  [chain cur nxt]
+  (<span class="keyword">let</span> [<span class="keyword">key</span> (<span class="keyword">when-not</span> (<span class="keyword">keyword?</span> cur) cur)
+        <span class="keyword">vals</span> (<span class="keyword">get</span> chain <span class="keyword">key</span> (edit []))]
+    (<span class="keyword">assoc</span> chain <span class="keyword">key</span> (<span class="keyword">conj!</span> <span class="keyword">vals</span> nxt))))
+
+(<span class="keyword">defn</span> <span class="function">markov-chain</span> <span class="symbol">:-</span> {}
+  <span class="string"><span class="delimiter">&quot;</span><span class="content">Returns markov chain, in form of a map, from given collection of words.</span><span class="delimiter">&quot;</span></span>
+  [words <span class="symbol">:-</span> []]
+  (<span class="keyword">let</span> [transitions (zip (<span class="keyword">cons</span> <span class="symbol">:start</span> words) words)]
+    (reduce-unpacked assoc-transition {} transitions)))</pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Here we are using multireducible features of Dunaj, creating
+convolution of two collections with <a href="http://www.dunaj.org/dunaj.coll.recipe.api.html#zip"><code>zip</code></a> and using <a href="http://www.dunaj.org/dunaj.coll.util.api.html#reduce_unpacked"><code>reduce-unpacked</code></a> to process the
+multireducible without creating any intermediate pairs of values, that
+would be needed if we have used a classic <code>reduce</code>. In fact throughout
+the whole process, no intermediate collections or lazy sequences were
+created, as <code>zip</code> also does not create any temporary collections.
+Also note that in order to speed up the construction of markov chain,
+a transient vectors are used to represent possible transitions for
+a given key. Now that we can create markov chains, let&#8217;s create one
+and inspect its contents a bit:</p>
+</div>
+<div class="listingblock">
+<div class="title">Create markov chain from words</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+<strong>10</strong>
+11
+12
+13
+14
+15
+16
+17
+18
+19
+<strong>20</strong>
+21
+22
+23
+24
+25
+26
+27
+28
+29
+<strong>30</strong>
+31
+32
+33
+34
+35
+36
+37
+38
+39
+<strong>40</strong>
+41
+42
+43
+44
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">def</span> <span class="function">mc</span> (markov-chain words))
+<span class="comment">;;=&gt; #'try.markov-naive/words</span>
+
+(<span class="keyword">count</span> mc)
+<span class="comment">;;=&gt; 23453</span>
+
+(<span class="keyword">seq</span> (<span class="keyword">take</span> <span class="integer">20</span> (<span class="keyword">keys</span> mc)))
+<span class="comment">;;=&gt; (nil &quot;shouted,&quot; &quot;convince&quot; &quot;weary,&quot; &quot;Lower&quot; &quot;mounting&quot; &quot;howled&quot; &quot;posse&quot; &quot;declares,&quot; &quot;shelf,&quot; &quot;heaped&quot; &quot;new,&quot; &quot;rainbow&quot; &quot;Bartholomew&quot; &quot;in,&quot; &quot;blandishments&quot; &quot;Christianity&quot; &quot;absorbed,&quot; &quot;float&quot; &quot;sweet&quot;)</span>
+
+<span class="comment">;; number of different starting words</span>
+(<span class="keyword">count</span> (<span class="keyword">distinct</span> (mc <span class="predefined-constant">nil</span>)))
+<span class="comment">;;=&gt; 1763</span>
+
+<span class="comment">;; see possible successors for &quot;Ishmael&quot; state</span>
+(<span class="keyword">seq</span> (mc <span class="string"><span class="delimiter">&quot;</span><span class="content">Ishmael</span><span class="delimiter">&quot;</span></span>))
+<span class="comment">;; (:stop-dot :stop-dot &quot;can&quot; :stop-dot &quot;hope&quot; :stop-qmark :stop-dot &quot;but&quot;)</span>
+
+<span class="comment">;; some more insight</span>
+(<span class="keyword">let</span> [s (<span class="keyword">vec</span> (<span class="keyword">sort-by</span> #(<span class="keyword">count</span> (<span class="keyword">second</span> %)) (<span class="keyword">vec</span> mc)))
+      pf #(-&gt;vec (<span class="keyword">first</span> %)
+                 (<span class="keyword">take</span> <span class="integer">3</span> (<span class="keyword">vec</span> (<span class="keyword">second</span> %)))
+                 (<span class="keyword">count</span> (<span class="keyword">second</span> %))
+                 (<span class="keyword">count</span> (<span class="keyword">distinct</span> (<span class="keyword">second</span> %))))]
+  (<span class="keyword">vec</span> (<span class="keyword">map</span> pf (<span class="keyword">take</span> <span class="integer">10</span> (<span class="keyword">reverse</span> s)))))
+<span class="comment">;; [[&quot;the&quot; [&quot;watery&quot; &quot;world&quot; &quot;spleen&quot;] 13514 4694]</span>
+<span class="comment">;;  [nil [&quot;Call&quot; &quot;Some&quot; &quot;It&quot;] 9854 1763]</span>
+<span class="comment">;;  [&quot;of&quot; [&quot;the&quot; &quot;driving&quot; &quot;every&quot;] 6400 1698]</span>
+<span class="comment">;;  [&quot;and&quot; [&quot;nothing&quot; &quot;see&quot; &quot;regulating&quot;] 5859 2623]</span>
+<span class="comment">;;  [&quot;a&quot; [&quot;little&quot; &quot;way&quot; &quot;damp,&quot;] 4476 2146]</span>
+<span class="comment">;;  [&quot;to&quot; [&quot;interest&quot; &quot;prevent&quot; &quot;get&quot;] 4443 1155]</span>
+<span class="comment">;;  [&quot;in&quot; [&quot;my&quot; &quot;my&quot; &quot;this&quot;] 3796 771]</span>
+<span class="comment">;;  [&quot;that&quot; [&quot;it&quot; &quot;noble&quot; &quot;man&quot;] 2767 975]</span>
+<span class="comment">;;  [&quot;his&quot; [&quot;sword&quot; &quot;deepest&quot; &quot;legs,&quot;] 2414 1281]</span>
+<span class="comment">;;  [&quot;I&quot; [&quot;thought&quot; &quot;would&quot; &quot;have&quot;] 1882 494]]</span>
+
+<span class="comment">;; tokens with most diverse transitions</span>
+(<span class="keyword">let</span> [cf (<span class="keyword">comp</span> <span class="keyword">count</span> <span class="keyword">distinct</span> <span class="keyword">second</span>)
+      s (<span class="keyword">take</span> <span class="integer">9</span> (<span class="keyword">reverse</span> (<span class="keyword">sort-by</span> cf (<span class="keyword">vec</span> mc))))]
+  (view
+   (bar-chart
+    (<span class="keyword">vec</span> (<span class="keyword">map</span> #(<span class="keyword">or</span> (<span class="keyword">first</span> %) <span class="symbol">:start</span>) s))
+    (<span class="keyword">vec</span> (<span class="keyword">map</span> cf s))
+    <span class="symbol">:title</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">Tokens with most diverse transitions</span><span class="delimiter">&quot;</span></span>
+    <span class="symbol">:x-label</span> <span class="string"><span class="delimiter">&quot;</span><span class="delimiter">&quot;</span></span> <span class="symbol">:y-label</span> <span class="string"><span class="delimiter">&quot;</span><span class="delimiter">&quot;</span></span>)))</pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="markov-bar.png" alt="Tokens with most diverse transitions"">
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_generating_random_sentences">Generating random sentences</h3>
+<div class="paragraph">
+<p>To generate a random sentence, we randomly walk through the markov
+chain, starting at <code>nil</code> state, until we hit a terminating token,
+which is in our case represented by a keyword. The resulting sequence
+of states will be transformed into a string, interposing spaces
+between individual words, and ending the sentence with a respective
+sentence terminator.</p>
+</div>
+<div class="listingblock">
+<div class="title">Sentence generation</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+<strong>10</strong>
+11
+12
+13
+14
+15
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">defn</span> <span class="function">random-sentence</span> <span class="symbol">:-</span> String
+  <span class="string"><span class="delimiter">&quot;</span><span class="content">Returns a random sentence generated from a given markov-chain.</span><span class="delimiter">&quot;</span></span>
+  [markov-chain <span class="symbol">:-</span> {}]
+  (<span class="keyword">let</span> [stop-map {<span class="symbol">:stop-bang</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">!</span><span class="delimiter">&quot;</span></span> <span class="symbol">:stop-qmark</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">?</span><span class="delimiter">&quot;</span></span>}]
+    (<span class="keyword">loop</span> [sentence [], cur (rand-nth (markov-chain <span class="predefined-constant">nil</span>))]
+      (<span class="keyword">if</span> (<span class="keyword">keyword?</span> cur)
+        (<span class="keyword">str</span> (append (<span class="keyword">get</span> stop-map cur <span class="string"><span class="delimiter">&quot;</span><span class="content">.</span><span class="delimiter">&quot;</span></span>) (<span class="keyword">interpose</span> <span class="string"><span class="delimiter">&quot;</span><span class="content"> </span><span class="delimiter">&quot;</span></span> sentence)))
+        (<span class="keyword">recur</span> (<span class="keyword">conj</span> sentence cur) (rand-nth (markov-chain cur)))))))
+
+(random-sentence mc)
+<span class="comment">;;=&gt; &quot;I obtain ample vengeance, eternal democracy!&quot;</span>
+<span class="comment">;;=&gt; &quot;At last degree succeed in the cry.&quot;</span>
+<span class="comment">;;=&gt; &quot;HUZZA PORPOISE.&quot;</span>
+<span class="comment">;;=&gt; &quot;An old, old man, in the bows, at times you say, should be placed as laborers.&quot;</span>
+<span class="comment">;;=&gt; &quot;So, so suddenly started on and strength, let the far fiercer curse the maid.&quot;</span></pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_summary">Summary</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>We can summarize the whole process as follows.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">def</span> <span class="function">mc</span>
+  (<span class="keyword">-&gt;&gt;</span> (<span class="keyword">slurp</span> (classpath <span class="string"><span class="delimiter">&quot;</span><span class="content">try/document/moby_dick.txt</span><span class="delimiter">&quot;</span></span>))
+       (tokenizer-engine word-tokenizer)
+       <span class="keyword">seq</span>
+       markov-chain
+       with-scope))
+
+(random-sentence mc)</pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <a href="https://github.com/dunaj-project/try.markov">dunaj-project/try.markov</a> repository contains following implementations of markov chains:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>markov_one.clj</code> - markov chain of order 1, used to generate graph at the beginning of this post</p>
+</li>
+<li>
+<p><code>markov_naive.clj</code> - the relevant source codes for this tutorial</p>
+</li>
+<li>
+<p><code>markov.clj</code> - heavily optimized markov chain of order 2, used to generate sentences for the game below</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The program uses latest stable release of <a href="http://www.dunaj.org">Dunaj</a>,
+<a href="https://github.com/hugoduncan/criterium">criterium</a>,
+<a href="https://github.com/ztellman/rhizome">rhizome</a> and
+<a href="https://github.com/incanter/incanter">incanter</a>.
+Note that Dunaj works seamlessly with these libraries,
+and its <a href="http://lite.dunaj.org">lite version</a> can be used in cases
+where the usage of a custom Clojure fork is not possible or desirable.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_guess_the_novel">Guess the novel</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Following little game contains selected randomly generated sentences
+that were generated based on one of the four novels mentioned below.
+Your task it to guess the source of the text used to construct
+a markov chain. The text generator used for these sentences is
+similar to one that was presented here, with some optimizations and
+bells and whistles added. One notable change is that the markov
+chain of order 2 was used here, which is a process where the next
+state depends on the past two states. This results in a less
+nonsensical text, but needs a fair amount of source data
+in order to generate unique sentences.</p>
+</div>
+<style type="text/css">
+#mdemo {border:2px dotted #888; margin-bottom:1em;}
+button {padding:0.5em; margin:0.1em; border:0px solid black;
+        font-size:16px;
+        font-family:sans-serif;}
+#mguess {font-size:18px; font-family:sans-serif;
+         padding:0.5em; line-height:1.5em;}
+#mhis {font-size:18px; font-family:sans-serif;
+       padding:0.5em; max-height:500px;
+       overflow-y:auto;}
+.mrow {display:flex;}
+.mlab {font-size:18px; font-family:sans-serif;
+       padding:0.5em;}
+#mcontrol {text-align:center; padding:0.5em;width:100%;}
+#mhis div {font-size:18px;  line-height:1.5em;
+              bdackground-color:#eee;
+              padding:0.5em;
+              font-family:sans-serif;}
+#mguess span {font-weight:600;font-size:18px;
+            display:block;
+            background-color:#eee;
+            padding:0.5em; margin-bottom:1em;
+            font-family:sans-serif;}
+#mbalice {background-color:#FDC68A;}
+#mbpride {background-color:#F49AC2;}
+#mbtom {background-color:#82CA9D;}
+#mbmoby {background-color:#8493CA;}
+.talice {color:#FDC68A;}
+.tpride {color:#F49AC2;}
+.ttom {color:#82CA9D;}
+.tmoby {color:#8493CA;}
+.mres {margin-left:0px;padding-left:0px !important;}
+.mgreen {color:green;}
+.mred {color:red;}
+</style>
+
+<div id="mdemo">
+<div class="mlab">Guess the source:</div>
+<div id="mcontrol">
+<button id="mbalice">Alice's Adventures in Wonderland</button>
+<button id="mbpride">Pride and Prejudice</button>
+<button id="mbtom">The Adventures of Tom Sawyer</button>
+<button id="mbmoby">Moby-Dick; or, The Whale</button>
+</div>
+<div id="mguess"><span></span></div>
+<div class="mlab" id="mrank"></div>
+<div id="mhis">
+</div>
+</div>
+<script src="markov.js">
+</script>
+<div class="paragraph">
+<p>All novels were downloaded from
+<a href="http://www.gutenberg.org/">Project Gutenberg</a>.
+The source code for the generator can be found
+in the <a href="https://github.com/dunaj-project/try.markov/blob/master/src/try/markov.clj">markov.clj</a> file.</p>
+</div>
+<div class="paragraph">
+<p>This post was published on April 2015. Back to the <a href="http://blog.wagjo.com/">Blog home</a></p>
+</div>
+</div>
+</div><div id="disqus_thread"></div><script>var disqus_shortname = 'wagjo'; var disqus_identifier = 'markov'; (function() {
+                    var dsq = document.createElement('script');
+                    dsq.type = 'text/javascript'; dsq.async = true;
+                    dsq.src = '//' + disqus_shortname +
+                              '.disqus.com/embed.js';
+                    (document.getElementsByTagName('head')[0] ||
+                     document.getElementsByTagName('body')[0]).appendChild(dsq);})();</script></div></section></div><script>window.onload = function() {document.getElementById('dd-focus').focus();}</script>
+</div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2015-04-29 15:43:21 CEST
+</div>
+</div>
+</body>
+</html>

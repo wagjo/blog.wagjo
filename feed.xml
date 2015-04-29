@@ -7,6 +7,18 @@
   <ttl>1800</ttl>
 
  <item>
+  <title>Markov Text Generator in Dunaj</title>
+  <description>In this post I give a quick introduction on how Markov
+  Chains are used to generate random sentences. Then I will walk
+  through the implementation of a sentence generator in Dunaj and at
+  the end I have prepared a small game, where you can guess the source
+  documents for generated sentences.</description> 
+  <link>http://blog.wagjo.com/markov.html</link>
+  <guid isPermaLink="true">http://blog.wagjo.com/markov.html</guid>
+  <pubDate>Wed, 29 Apr 2015 13:00:00 +0000</pubDate>
+ </item>
+ 
+ <item>
   <title>Universal and Complement Sets in Dunaj</title>
   <description>Dunaj is full of small useful features and improvements. One of such features is the introduction of universal and complement sets, an addition which enables the representation of identity elements in reduction functions that handle set items.</description>
   <link>http://blog.wagjo.com/set.html</link>
