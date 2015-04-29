@@ -41,7 +41,9 @@
    :static-pages
    [{:filename "index" :name "Blog"}
     {:filename "set" :name "Universal and Complement Sets in Dunaj"
-     :disqus-id "set"}]})
+     :disqus-id "set"}
+    {:filename "markov" :name "Markov Text Generator in Dunaj"
+     :disqus-id "markov"}]})
 
 
 ;;;; Scratch
@@ -52,5 +54,7 @@
 
 
   (dunaj.doc/gen-static blog-config)
+
+
 
 )
