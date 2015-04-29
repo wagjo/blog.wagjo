@@ -444,10 +444,10 @@ button {padding:0.5em; margin:0.1em; border:0px solid black;
 <div id="mdemo">
 <div class="mlab">Guess the source:</div>
 <div id="mcontrol">
-<button id="mbalice">Alice's Adventures in Wonderland</button>
+<button id="mbalice">Alice in Wonderland</button>
 <button id="mbpride">Pride and Prejudice</button>
-<button id="mbtom">The Adventures of Tom Sawyer</button>
-<button id="mbmoby">Moby-Dick; or, The Whale</button>
+<button id="mbtom">Adventures of Tom Sawyer</button>
+<button id="mbmoby">Moby-Dick</button>
 </div>
 <div id="mguess"><span></span></div>
 <div class="mlab" id="mrank"></div>
