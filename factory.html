@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge"><![endif]-->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 1.5.2">
+<title>Idiomatic Factory Pattern in Clojure</title>
+<link rel="stylesheet" href="./dd.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.2.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="./coderay-asciidoctor.css">
+</head>
+<body class="article">
+<div id="header">
+<h1>Idiomatic Factory Pattern in Clojure</h1>
+</div>
+<div id="content">
+<header id="dd-header"><div id="dd-logo"><a href="http://www.wagjo.com/"><img src="logo.png"></img>Jozef Wagner</a></div><div id="dd-mmenu"><a class="dd-mmlink" href="http://wagjo.com"><i class="fa fa-home dd-mmsh"></i> <span>Homepage</span></a><a class="dd-mmlink" href="http://blog.wagjo.com"><i class="fa fa-pencil dd-mmsh"></i> <span>Blog</span></a><a class="dd-mmlink" href="http://wagjo.com/consulting"><i class="fa fa-dot-circle-o dd-mmsh"></i> <span>Consulting Services</span></a><a class="dd-mmlink" href="http://blog.wagjo.com/feed.xml"><i class="fa fa-rss dd-mmsh"></i> <span>RSS Feed</span></a></div></header><div id="dd-flex"><section id="dd-content"><div class="dd-over" tabindex="-1" id="dd-focus"><div id="header"><div id="teaser">Hi, I’m a business consultant and a software developer
+that specializes in Business Intelligence and Clojure.<br/>
+<b><a href="http://www.wagjo.com">Hire me</a> and I'll come up with
+a solution for your business problems</b> that generates revenue,
+has low total cost of ownership, and is flexible when adopting to
+new business strategies and initiatives.</div><h1 id="dd-top">Idiomatic Factory Pattern in Clojure</h1><div class="details">Copyright © 2015, &nbsp;<span class="author">Jozef Wagner</span><br></div></div><div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>Factory Pattern is a <a href="http://en.wikipedia.org/wiki/Creational_pattern">creational design pattern</a> that adheres to Clojure&#8217;s design and
+philosophy. It specifies a simple and composable way to formalize
+object creation mechanism, using ordinary Clojure building blocks
+such as functions, protocols and records. Factory Pattern:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Standardizes object construction process using ordinary and well
+known Clojure constructs</p>
+</li>
+<li>
+<p>Provides a clean way to define extension points for library authors</p>
+</li>
+<li>
+<p>Prescribes a way to store and manage configuration options for
+custom data types</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Factory pattern helps to <strong>formalize the requirements for the object
+creation phase</strong> of custom implementations of abstract data types
+in a standardized way.</p>
+</div>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Motivating story</div>
+<div class="paragraph">
+<p>Imagine that you want to provide a new type of persistent collection,
+lets say a new type of persistent sorted set based on
+<a href="https://github.com/clojure/data.avl">AVL Trees</a>.
+By implementing collection-related protocols and interfaces such as
+<code>IPersistentCollection</code> and <code>IPersistentSet</code>, existing built-in
+core collection-related functions <code>conj</code> and <code>disj</code>
+will automatically support your custom set type.
+The construction phase is however not addressed by those abstractions,
+and it is up to your diligence and thoughtfulness to provide a
+complete set of ad-hoc constructors for the new collection type.</p>
+</div>
+<div class="paragraph">
+<p>This can easily get messed up with e.g. map-like collections,
+where you can have constructors that expect sequence of interleaved
+keys and values (<code>hash-map</code> like), key-value pairs, or two
+collections, one for keys and other for values (<code>zipmap</code> like).
+For some collection types, custom 'copy' constructors (like <code>set</code>)
+may be needed in order to fulfill advertised performance guarantees.
+Moreover, implementers have to devise custom names for their
+constructors or put them in a separate namespace, neither of which
+make the usage of custom collection types particulary simple.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_rationale">Rationale</h2>
+<div class="sectionbody">
+<div class="quoteblock">
+<blockquote>
+It is better to have 100 functions operate on one data structure than
+10 functions on 10 data structures.
+</blockquote>
+<div class="attribution">
+&#8212; Alan Perlis<br>
+<cite>Epigrams on Programming</cite>
+</div>
+</div>
+<div class="paragraph">
+<p>Clojure follows this approach by defining functions that work not on
+top of a concrete data datype, but which instead work on top of
+abstract data types; Seqs for generic collections, IPersistentMap
+for associative data structures and so on. These abstract data types
+are represented in form of Clojure protocols or Java interfaces.
+If a library author wishes to create a new type of data structure,
+she provides a custom implementation for respective
+protocols/interfaces. All core collection related functions will then
+be able to seamlessly operate on objects of her new data type.</p>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+Clojure protocols function as a great concept for defining such
+extension points. They are preferred over Java interfaces in cases
+where the API is to be used mainly from Clojure and/or support for
+multiple hosts (e.g. ClojureScript) is desirable.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>There is however a one piece missing, namely the process of
+constructing a new data type instance. Clojure does not provide any
+concept or idiom for that purpose and uses ad-hoc functions for its
+own data types (<code>hash-map</code>, <code>set</code>, <code>sorted-set-by</code>).
+The standardization of the creation process is most required in cases
+where the transformation between different types of same abstraction
+is needed, like in case of collections.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This guide is written from the point of an API maintainer that
+wishes to make her API extensible with custom types provided by third
+party. Besides that, Factory Pattern is also perfectly useful for
+moderate and large projects, where developers want to decouple parts
+of the system.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_factory_pattern">Factory Pattern</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Factory Pattern is designed to be used in extensible APIs where it
+specifies the standardized extension point for constructing
+instances of built-in or custom data types.
+Together with ordinary protocols, factory pattern helps to provide
+complete specification for abstract data types that covers both
+the functionalities and the construction phase which a custom data
+type is required to support. Factory Pattern defines following four
+basic concepts:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Factory Protocol</strong> - An abstraction for the construction phase,
+provided by API maintainer. Specifies the ways of constructing
+new objects that are expected to be supported by custom data types.</p>
+</li>
+<li>
+<p><strong>Constructor Function</strong> - An ordinary function that calls the
+protocol method of a respective factory protocol. Takes factory
+object as its first argument, and is defined by API maintainer.</p>
+</li>
+<li>
+<p><strong>Factory Record</strong> - A custom record type, implementing respective
+factory protocol and specifying configuration options. Defined by
+library author and internal to a given library.</p>
+</li>
+<li>
+<p><strong>Factory Object</strong> - A Factory Record Object, a global non-dynamic
+var. Defined by a library author and made public as a part of
+hers API.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Factory pattern formalizes and documents the construction process.
+Moreover, Factory Records provide a standardized place for
+storing configuration options.</p>
+</div>
+<div class="paragraph">
+<p>Instances of factory protocols are called <strong>factories</strong>. By convention,
+factory is implemented as a record, exposing all its options as
+record fields. This provides a powerful and standardized approach
+to the construction phase of any abstract data type.</p>
+</div>
+<div class="sect2">
+<h3 id="_factory_protocol">Factory Protocol</h3>
+<div class="paragraph">
+<p>If the API maintainer wishes to enable support for third party data
+types, she creates a group of public protocols that provides extension
+points for specific functionalities (e.g. IPersistentSet,
+IPersistentCollection). In order to standardize the construction
+phase too, API maintainer should also define a public
+<strong>Factory Protocol</strong>. This protocol defines one or more protocol
+methods that represent supported ways of constructing new objects.
+The following example shows the factory protocol for abstract
+collection type.</p>
+</div>
+<div class="listingblock">
+<div class="title">Factory Protocol</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">defprotocol</span> <span class="class">ICollectionFactory</span>
+  <span class="string"><span class="delimiter">&quot;</span><span class="content">A factory protocol for collections.</span><span class="delimiter">&quot;</span></span>
+  (-from-coll
+    [this coll]
+    <span class="string"><span class="delimiter">&quot;</span><span class="content">Returns a new collection from the contents of _coll_, which can
+    also be nil. Any metadata should be preserved.</span><span class="delimiter">&quot;</span></span>)
+  (-from-items
+    [this] [this a] [this a b] [this a b c] [this a b c more]
+    <span class="string"><span class="delimiter">&quot;</span><span class="content">Returns a new collection that contains given items.</span><span class="delimiter">&quot;</span></span>))</pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Factory protocols are directed towards the implementers of custom
+types and not towards ordinary users. The API maintainer should thus
+also define a <strong>constructor function</strong>, which serves as a central point
+for the instantiation of both built-in and custom types.
+The constructor function takes factory object as its first parameter.</p>
+</div>
+<div class="listingblock">
+<div class="title">Constructors</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+<strong>10</strong>
+11
+12
+13
+14
+15
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">defn</span> <span class="function">collection</span>
+  <span class="string"><span class="delimiter">&quot;</span><span class="content">Returns a new collection, created by _factory_, that will contain
+  same contents as _coll_, which can be nil. Copies metadata from
+  _coll_ into returned collection.</span><span class="delimiter">&quot;</span></span>
+  [factory coll]
+  (-from-coll factory coll))
+
+(<span class="keyword">defn</span> <span class="function">-&gt;collection</span>
+  <span class="string"><span class="delimiter">&quot;</span><span class="content">Returns a new collection created by _factory_ containing
+  given items, if any.</span><span class="delimiter">&quot;</span></span>
+  ([factory] (-from-items factory))
+  ([factory a] (-from-items factory a))
+  ([factory a b] (-from-items factory a b))
+  ([factory a b c] (-from-items factory a b c))
+  ([factory a b c &amp; more] (-from-items factory a b c more)))</pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>As an option, a set of convenience functions can be also provided for
+already available built-in types and their factories. In our
+collection analogy, such convenience constructor functions are in
+Clojure represented by e.g. <code>vec</code>, <code>sorted-set</code> or <code>zipmap</code>.</p>
+</div>
+<div class="listingblock">
+<div class="title">Convenience built-in constructor</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">defn</span> <span class="function">set</span>
+  <span class="string"><span class="delimiter">&quot;</span><span class="content">Returns a persistent hash set with the contents of _coll_.</span><span class="delimiter">&quot;</span></span>
+  [coll]
+  (collection hamt-set-factory coll))</pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_custom_types">Custom types</h3>
+<div class="paragraph">
+<p>Note that the constructor function usually does not (and should not)
+provide a way to pass type specific configuration options. Such
+parameters are handled in the factory object itself. In the Factory
+Pattern approach, a <strong>factory is represented by a custom record that
+implements respective factory protocol</strong>. Any configuration options
+are stored as key-value entries in a record part of a factory object.
+That way, traditional map related functions from Clojure can be used
+to set and query the configuration options for a given factory.</p>
+</div>
+<div class="listingblock">
+<div class="title">Factory Record</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+<strong>10</strong>
+11
+12
+13
+14
+15
+16
+17
+18
+19
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">defrecord</span> ^<span class="symbol">:private</span> AvlSortedSetFactory
+  <span class="string"><span class="delimiter">&quot;</span><span class="content">A factory record for AVL sorted set.</span><span class="delimiter">&quot;</span></span>
+  [<span class="keyword">comparator</span>]
+  ICollectionFactory
+  (-from-items [factory]
+   (empty-avl-sorted-set <span class="keyword">comparator</span>))
+  (-from-items [factory a]
+   (<span class="keyword">conj</span> (empty-avl-sorted-set <span class="keyword">comparator</span>) a))
+  (-from-items [factory a b]
+   (<span class="keyword">conj</span> (empty-avl-sorted-set <span class="keyword">comparator</span>) a b))
+  (-from-items [factory a b c]
+   (<span class="keyword">conj</span> (empty-avl-sorted-set <span class="keyword">comparator</span>) a b c))
+  (-from-items [factory a b c more]
+   (<span class="keyword">let</span> [t (<span class="keyword">-&gt;</span> (<span class="keyword">transient</span> (empty-avl-sorted-set <span class="keyword">comparator</span>))
+               (<span class="keyword">conj!</span> a) (<span class="keyword">conj!</span> b) (<span class="keyword">conj!</span> c))]
+     (<span class="keyword">persistent!</span> (<span class="keyword">reduce</span> <span class="keyword">conj!</span> t more))))
+  (-from-coll [factory coll]
+   (<span class="keyword">let</span> [t (<span class="keyword">transient</span> (empty-avl-sorted-set <span class="keyword">comparator</span>))]
+     (<span class="keyword">persistent!</span> (<span class="keyword">reduce</span> <span class="keyword">conj!</span> t coll)))))</pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Factory record types are usually not made public. What is consumed
+by the library users, and is a part of the library&#8217;s API, is the
+<strong>immutable factory object</strong>, that is the instance of the above defined
+factory record type. Factory object is a global non-dynamic var,
+a record object that satisfies the respective Factory Protocol.</p>
+</div>
+<div class="paragraph">
+<p>Factory object has set default values for all its configuration
+options and describes their meaning and possible values in its
+documentation string.</p>
+</div>
+<div class="listingblock">
+<div class="title">Factory object</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">def</span> <span class="function">avl-sorted-set-factory</span>
+  <span class="string"><span class="delimiter">&quot;</span><span class="content">An AVL sorted set factory instance.
+  Factory has following configuration options:
+
+  * comparator - a comparator used for sorting items. nil
+    represents a natural ordering.</span><span class="delimiter">&quot;</span></span>
+  (-&gt;AvlSortedSetFactory <span class="predefined-constant">nil</span>))</pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Just like for built-in types, a number of convenience functions
+are usually provided for direct instantiation of a custom data type.</p>
+</div>
+<div class="listingblock">
+<div class="title">Convenience constructors</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+<strong>10</strong>
+11
+12
+13
+14
+15
+16
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">defn</span> <span class="function">-&gt;avl-sorted-set</span>
+  <span class="string"><span class="delimiter">&quot;</span><span class="content">Returns an AVL sorted set containing given items, if any,
+  using default item ordering.</span><span class="delimiter">&quot;</span></span>
+  ([] (-&gt;collection avl-sorted-set-factory))
+  ([a] (-&gt;collection avl-sorted-set-factory a))
+  ([a b] (-&gt;collection avl-sorted-set-factory a b))
+  ([a b c] (-&gt;collection avl-sorted-set-factory a b c))
+  ([a b c &amp; more] (-&gt;collection avl-sorted-set-factory a b c more)))
+
+(<span class="keyword">defn</span> <span class="function">avl-sorted-set-by</span>
+  <span class="string"><span class="delimiter">&quot;</span><span class="content">Returns an AVL sorted set with the contents of _coll_ and a custom
+  _comparator_. nil _comparator_ represents a natural ordering.
+  Copies metadata from _coll_ into returned collection.</span><span class="delimiter">&quot;</span></span>
+  [<span class="keyword">comparator</span> coll]
+  (<span class="keyword">let</span> [af (<span class="keyword">assoc</span> avl-sorted-set-factory <span class="symbol">:comparator</span> <span class="keyword">comparator</span>)]
+    (collection af coll)))</pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>As you can see in the above constructor, factory is an ordinary record
+object and can be manipulated with Clojure&#8217;s built-in collection
+functions in the same way as any other associative data strucutre.
+<strong>This greatly simplifies the resulting API and the process of
+inspecting, managing and customizing configuration options for
+concrete data types</strong>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_variations">Variations</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Factory Pattern is heavily used in the <a href="http://www.dunaj.org/">Dunaj project</a> and its related libraries.
+Factory protocols are used to specify constructors for
+<a href="http://www.dunaj.org/dunaj.coll.spi.html#ICollectionFactory">collections</a>,
+<a href="http://www.dunaj.org/dunaj.coll.spi.html#IConvolutionFactory">associative data structures</a>,
+<a href="http://www.dunaj.org/dunaj.format.spi.html#IParserFactory">data formatters</a>,
+<a href="http://www.dunaj.org/dunaj.format.parser.spi.html#IParserMachineFactory">parser engines</a>,
+<a href="http://www.dunaj.org/dunaj.time.spi.html#IInstantFactory">instants</a>,
+<a href="http://www.dunaj.org/dunaj.function.spi.html#IMemoizationFactory">memoization strategies</a>,
+<a href="http://www.dunaj.org/dunaj.resource.spi.html#IAcquirableFactory">computer and network resources</a> and custom implementations of
+<a href="http://www.dunaj.org/dunaj.math.random.spi.html#IRngFactory">random number generator</a>.</p>
+</div>
+<div class="paragraph">
+<p>There are several variations of the factory pattern possible, based
+on a particular use case. For example, if the factory has some
+required options for which no default value exists, it
+is better for a library author to provide a function that returns a
+factory object instead of just publishing factory object itself. This
+approach was used e.g. in
+<a href="http://www.dunaj.org/dunaj.resource.file.api.html#file"><code>file</code> resource factory</a>,
+with filename as a required factory option. In this scenarion, the
+factory function usually specifies a dedicated input argument for each
+required option.</p>
+</div>
+<div class="paragraph">
+<p>There can also be multiple factory constructors or factories for one
+factory record, based on library author needs (e.g. one <code>HttpFactory</code>
+record, default factory
+<a href="http://www.dunaj.org/dunaj.resource.http.api.html#http_factory"><code>http-factory</code></a>,
+ and <a href="http://www.dunaj.org/dunaj.resource.http.api.html#http"><code>http</code></a>
+ and <a href="http://www.dunaj.org/dunaj.resource.http.api.html#https"><code>https</code></a>
+ factory constructors, creating factory objects with different default
+values for some options).</p>
+</div>
+<div class="paragraph">
+<p>In specific cases, it is also appropriate to support passing
+configuration options in the constructor function itself. This is
+particularly useful when data types are configured similarly, such as
+in case of
+<a href="http://www.dunaj.org/dunaj.math.random.api.html#rng">random number generators</a>,
+where the seed parameter makes sense for multiple kinds of rngs.</p>
+</div>
+<div class="paragraph">
+<p>Factories work well within the Component architecture too.
+A <a href="https://github.com/wagjo/jogurt">toy project</a> that demostrate such
+capabilities shows the usage of
+factories <a href="https://github.com/wagjo/jogurt/blob/master/src/jogurt/system.clj#L41">here</a>
+ and <a href="https://github.com/wagjo/jogurt/blob/master/src/jogurt/ring/routes.clj#L52">here</a>,
+ and uses factories to create basic dependency injection support, as
+shown
+<a href="https://github.com/wagjo/jogurt/blob/master/src/jogurt/system.clj#L37">here</a> and
+<a href="https://github.com/wagjo/jogurt/blob/master/src/jogurt/store/memory.clj#L45">here</a>.</p>
+</div>
+<div class="paragraph">
+<p>This post was published on June 2015.
+Back to the <a href="http://blog.wagjo.com/">Blog home</a></p>
+</div>
+</div>
+</div><div id="disqus_thread"></div><script>var disqus_shortname = 'wagjo'; var disqus_identifier = 'factory'; (function() {
+                    var dsq = document.createElement('script');
+                    dsq.type = 'text/javascript'; dsq.async = true;
+                    dsq.src = '//' + disqus_shortname +
+                              '.disqus.com/embed.js';
+                    (document.getElementsByTagName('head')[0] ||
+                     document.getElementsByTagName('body')[0]).appendChild(dsq);})();</script></div></section></div><script>window.onload = function() {document.getElementById('dd-focus').focus();}</script>
+</div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2015-06-08 14:13:40 CEST
+</div>
+</div>
+</body>
+</html>

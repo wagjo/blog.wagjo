@@ -7,6 +7,18 @@
   <ttl>1800</ttl>
 
  <item>
+  <title>Idiomatic Factory Pattern in Clojure</title>
+  <description>Factory Pattern is a creational design pattern that
+  adheres to Clojure's design and philosophy. It helps to formalize
+  the requirements for the object creation phase of custom
+  implementations of abstract data types in a standardized
+  way.</description> 
+  <link>http://blog.wagjo.com/factory.html</link>
+  <guid isPermaLink="true">http://blog.wagjo.com/factory.html</guid>
+  <pubDate>Mon, 08 Jun 2015 13:00:00 +0000</pubDate>
+ </item>
+ 
+ <item>
   <title>Markov Text Generator in Dunaj</title>
   <description>In this post I give a quick introduction on how Markov
   Chains are used to generate random sentences. Then I will walk

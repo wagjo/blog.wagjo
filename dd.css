@@ -3,6 +3,7 @@
 /** Correct `block` display not defined in IE 8/9. */
 @import url(http://fonts.googleapis.com/css?family=Merriweather);
 @import url(http://fonts.googleapis.com/css?family=Amaranth);
+@import url(http://fonts.googleapis.com/css?family=Open+Sans+Condensed:300);
 @import url(http://fonts.googleapis.com/css?family=Source+Code+Pro:400,600);
 article, aside, details, figcaption, figure, footer, header, hgroup, main, nav, section, summary { display: block; }
 
@@ -950,3 +951,15 @@ div:focus { outline: none; }
 @media (max-width: 350px) { #dd-logo > span { display: none; } }
 @media (max-width: 830px) { .dd-mmlink .dd-mmsh { color: #1d4b8f; }
   .dd-mmlink span { display: none; } }
+
+#teaser
+{
+padding:1em;
+background-color:#e2ff98;
+border-radius:17px;
+margin:0.5em;
+font-size:22px;
+font-family: 'Open Sans Condensed', 'DejaVu Sans', sans-serif;
+font-weight:300;
+line-height:1.5em;
+}
