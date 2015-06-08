@@ -503,6 +503,62 @@ shown
 <a href="https://github.com/wagjo/jogurt/blob/master/src/jogurt/store/memory.clj#L45">here</a>.</p>
 </div>
 <div class="paragraph">
+<p>Last but not least, the Factory Pattern allows to use existing host
+objects as factories, in case such approach is intuitive and valuable.
+As an example, Dunaj extends its formatter factories for
+<a href="https://github.com/dunaj-project/dunaj/blob/master/src/clj/dunaj/format.clj#L101">Strings</a> and
+<a href="https://github.com/dunaj-project/dunaj/blob/master/src/clj/dunaj/regex.clj#L74">regular expressions</a>,
+which enables following usage:</p>
+</div>
+<div class="listingblock">
+<div class="title">Using factories</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+<strong>10</strong>
+11
+12
+13
+14
+15
+16
+17
+18
+19
+<strong>20</strong>
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">str</span> (parse utf-8 [<span class="integer">72</span> <span class="integer">101</span> <span class="integer">108</span> <span class="integer">108</span> <span class="integer">111</span> <span class="integer">32</span> <span class="integer">119</span> <span class="integer">111</span> <span class="integer">114</span> <span class="integer">108</span> <span class="integer">100</span>]))
+<span class="comment">;;=&gt; &quot;Hello world&quot;</span>
+
+(<span class="keyword">seq</span> (parse <span class="regexp"><span class="delimiter">#&quot;</span><span class="content">(a)(sdf)</span><span class="delimiter">&quot;</span></span> <span class="string"><span class="delimiter">&quot;</span><span class="content">asdffsadasdfdd</span><span class="delimiter">&quot;</span></span>))
+<span class="comment">;;=&gt; ([&quot;asdf&quot; &quot;a&quot; &quot;sdf&quot;] [&quot;asdf&quot; &quot;a&quot; &quot;sdf&quot;])</span>
+
+<span class="comment">;; parser with custom option</span>
+(parse-whole (<span class="keyword">assoc</span> json <span class="symbol">:key-decode-fn</span> <span class="keyword">keyword</span>) <span class="string"><span class="delimiter">&quot;</span><span class="content">{</span><span class="content">\&quot;</span><span class="content">foo</span><span class="content">\&quot;</span><span class="content">: 3}</span><span class="delimiter">&quot;</span></span>)
+<span class="comment">;;=&gt; {:foo 3}</span>
+
+<span class="comment">;; some parser factories provide various safety features...</span>
+(<span class="keyword">first</span> (parse (<span class="keyword">assoc</span> edn <span class="symbol">:container-item-limit</span> <span class="integer">5000</span>)
+              (prepend <span class="char">\[</span> (<span class="keyword">cycle</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">:foo </span><span class="delimiter">&quot;</span></span>))))
+<span class="comment">;; java.lang.IllegalStateException: parser engine error: container item count reached 5001</span>
+
+(<span class="keyword">print</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">%s : %06X</span><span class="delimiter">&quot;</span></span> <span class="string"><span class="delimiter">&quot;</span><span class="content">hello world</span><span class="delimiter">&quot;</span></span> <span class="integer">42</span>)
+<span class="comment">;;=&gt; &quot;hello world : 00002A&quot;</span>
+
+(<span class="keyword">vec</span> (<span class="keyword">print</span> utf-16 <span class="string"><span class="delimiter">&quot;</span><span class="content">Hello world</span><span class="delimiter">&quot;</span></span>))
+<span class="comment">;; [-2 -1 0 72 0 101 0 108 0 108 0 111 0 32 0 119 0 111 0 114 0 108 0 100]</span></pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
 <p>This post was published on June 2015.
 Back to the <a href="http://blog.wagjo.com/">Blog home</a></p>
 </div>
@@ -517,7 +573,7 @@ Back to the <a href="http://blog.wagjo.com/">Blog home</a></p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-06-08 14:13:40 CEST
+Last updated 2015-06-08 18:17:49 CEST
 </div>
 </div>
 </body>
