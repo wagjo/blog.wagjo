@@ -24,6 +24,12 @@
    :proj-name "Jozef Wagner"
    :no-doc-title true
    :disqus "wagjo"
+   :teaser "Hi, I’m a business consultant and a software developer
+that specializes in Business Intelligence and Clojure.<br/>
+<b><a href=\"http://www.wagjo.com\">Hire me</a> and I'll come up with
+a solution for your business problems</b> that generates revenue,
+has low total cost of ownership, and is flexible when adopting to
+new business strategies and initiatives."
    :proj-url "http://www.wagjo.com/"
    :copy-years "2015,"
    :additional-copyright
@@ -43,7 +49,9 @@
     {:filename "set" :name "Universal and Complement Sets in Dunaj"
      :disqus-id "set"}
     {:filename "markov" :name "Markov Text Generator in Dunaj"
-     :disqus-id "markov"}]})
+     :disqus-id "markov"}
+    {:filename "factory" :name "Idiomatic Factory Pattern in Clojure"
+     :disqus-id "factory"}]})
 
 
 ;;;; Scratch

@@ -2,6 +2,10 @@ Low frequency programming related blog of http://www.wagjo.com/[Jozef Wagner]. G
 
 === 2015
 
+==== June
+
+* <<factory.ad#,Idiomatic Factory Pattern in Clojure>>
+
 ==== April
 
 * <<markov.ad#,Markov Text Generator in Dunaj>>

@@ -1,0 +1,313 @@
+Factory Pattern is a http://en.wikipedia.org/wiki/Creational_pattern[creational design pattern] that adheres to Clojure's design and 
+philosophy. It specifies a simple and composable way to formalize
+object creation mechanism, using ordinary Clojure building blocks
+such as functions, protocols and records. Factory Pattern:
+
+* Standardizes object construction process using ordinary and well
+  known Clojure constructs
+* Provides a clean way to define extension points for library authors
+* Prescribes a way to store and manage configuration options for
+  custom data types
+
+Factory pattern helps to *formalize the requirements for the object
+creation phase* of custom implementations of abstract data types
+in a standardized way.
+
+.Motivating story
+****
+Imagine that you want to provide a new type of persistent collection,
+lets say a new type of persistent sorted set based on
+https://github.com/clojure/data.avl[AVL Trees].
+By implementing collection-related protocols and interfaces such as
+`IPersistentCollection` and `IPersistentSet`, existing built-in
+core collection-related functions `conj` and `disj`
+will automatically support your custom set type.
+The construction phase is however not addressed by those abstractions,
+and it is up to your diligence and thoughtfulness to provide a
+complete set of ad-hoc constructors for the new collection type.
+
+This can easily get messed up with e.g. map-like collections,
+where you can have constructors that expect sequence of interleaved
+keys and values (`hash-map` like), key-value pairs, or two
+collections, one for keys and other for values (`zipmap` like).
+For some collection types, custom 'copy' constructors (like `set`)
+may be needed in order to fulfill advertised performance guarantees.
+Moreover, implementers have to devise custom names for their
+constructors or put them in a separate namespace, neither of which
+make the usage of custom collection types particulary simple.
+****
+
+== Rationale
+
+[quote, Alan Perlis, Epigrams on Programming]
+It is better to have 100 functions operate on one data structure than
+10 functions on 10 data structures.
+
+Clojure follows this approach by defining functions that work not on
+top of a concrete data datype, but which instead work on top of
+abstract data types; Seqs for generic collections, IPersistentMap
+for associative data structures and so on. These abstract data types
+are represented in form of Clojure protocols or Java interfaces.
+If a library author wishes to create a new type of data structure,
+she provides a custom implementation for respective
+protocols/interfaces. All core collection related functions will then
+be able to seamlessly operate on objects of her new data type.
+
+TIP: Clojure protocols function as a great concept for defining such
+extension points. They are preferred over Java interfaces in cases
+where the API is to be used mainly from Clojure and/or support for
+multiple hosts (e.g. ClojureScript) is desirable.
+
+There is however a one piece missing, namely the process of
+constructing a new data type instance. Clojure does not provide any
+concept or idiom for that purpose and uses ad-hoc functions for its
+own data types (`hash-map`, `set`, `sorted-set-by`).
+The standardization of the creation process is most required in cases
+where the transformation between different types of same abstraction
+is needed, like in case of collections.
+
+NOTE: This guide is written from the point of an API maintainer that
+wishes to make her API extensible with custom types provided by third
+party. Besides that, Factory Pattern is also perfectly useful for
+moderate and large projects, where developers want to decouple parts
+of the system.
+
+== Factory Pattern
+
+Factory Pattern is designed to be used in extensible APIs where it
+specifies the standardized extension point for constructing
+instances of built-in or custom data types.
+Together with ordinary protocols, factory pattern helps to provide
+complete specification for abstract data types that covers both
+the functionalities and the construction phase which a custom data
+type is required to support. Factory Pattern defines following four
+basic concepts:
+
+* *Factory Protocol* - An abstraction for the construction phase,
+  provided by API maintainer. Specifies the ways of constructing
+  new objects that are expected to be supported by custom data types.
+* *Constructor Function* - An ordinary function that calls the
+  protocol method of a respective factory protocol. Takes factory
+  object as its first argument, and is defined by API maintainer.
+* *Factory Record* - A custom record type, implementing respective
+  factory protocol and specifying configuration options. Defined by
+  library author and internal to a given library.
+* *Factory Object* - A Factory Record Object, a global non-dynamic
+  var. Defined by a library author and made public as a part of
+  hers API.
+
+Factory pattern formalizes and documents the construction process.
+Moreover, Factory Records provide a standardized place for
+storing configuration options.
+
+Instances of factory protocols are called *factories*. By convention,
+factory is implemented as a record, exposing all its options as
+record fields. This provides a powerful and standardized approach
+to the construction phase of any abstract data type.
+
+=== Factory Protocol
+
+If the API maintainer wishes to enable support for third party data
+types, she creates a group of public protocols that provides extension
+points for specific functionalities (e.g. IPersistentSet,
+IPersistentCollection). In order to standardize the construction
+phase too, API maintainer should also define a public
+*Factory Protocol*. This protocol defines one or more protocol
+methods that represent supported ways of constructing new objects.
+The following example shows the factory protocol for abstract
+collection type.
+
+.Factory Protocol
+[source, clojure, linesnum]
+----
+(defprotocol ICollectionFactory
+  "A factory protocol for collections."
+  (-from-coll
+    [this coll]
+    "Returns a new collection from the contents of _coll_, which can
+    also be nil. Any metadata should be preserved.")
+  (-from-items
+    [this] [this a] [this a b] [this a b c] [this a b c more]
+    "Returns a new collection that contains given items."))
+----
+
+Factory protocols are directed towards the implementers of custom
+types and not towards ordinary users. The API maintainer should thus
+also define a *constructor function*, which serves as a central point
+for the instantiation of both built-in and custom types.
+The constructor function takes factory object as its first parameter.
+
+.Constructors
+[source, clojure, linesnum]
+----
+(defn collection
+  "Returns a new collection, created by _factory_, that will contain
+  same contents as _coll_, which can be nil. Copies metadata from
+  _coll_ into returned collection."
+  [factory coll]
+  (-from-coll factory coll))
+
+(defn ->collection
+  "Returns a new collection created by _factory_ containing
+  given items, if any."
+  ([factory] (-from-items factory))
+  ([factory a] (-from-items factory a))
+  ([factory a b] (-from-items factory a b))
+  ([factory a b c] (-from-items factory a b c))
+  ([factory a b c & more] (-from-items factory a b c more)))
+----
+
+As an option, a set of convenience functions can be also provided for
+already available built-in types and their factories. In our
+collection analogy, such convenience constructor functions are in
+Clojure represented by e.g. `vec`, `sorted-set` or `zipmap`.
+
+.Convenience built-in constructor
+[source, clojure, linesnum]
+----
+(defn set
+  "Returns a persistent hash set with the contents of _coll_."
+  [coll]
+  (collection hamt-set-factory coll))
+----
+
+=== Custom types
+
+Note that the constructor function usually does not (and should not)
+provide a way to pass type specific configuration options. Such
+parameters are handled in the factory object itself. In the Factory
+Pattern approach, a *factory is represented by a custom record that
+implements respective factory protocol*. Any configuration options
+are stored as key-value entries in a record part of a factory object.
+That way, traditional map related functions from Clojure can be used
+to set and query the configuration options for a given factory.
+
+.Factory Record
+[source, clojure, linesnum]
+----
+(defrecord ^:private AvlSortedSetFactory
+  "A factory record for AVL sorted set."
+  [comparator]
+  ICollectionFactory
+  (-from-items [factory]
+   (empty-avl-sorted-set comparator))
+  (-from-items [factory a]
+   (conj (empty-avl-sorted-set comparator) a))
+  (-from-items [factory a b]
+   (conj (empty-avl-sorted-set comparator) a b))
+  (-from-items [factory a b c]
+   (conj (empty-avl-sorted-set comparator) a b c))
+  (-from-items [factory a b c more]
+   (let [t (-> (transient (empty-avl-sorted-set comparator))
+               (conj! a) (conj! b) (conj! c))]
+     (persistent! (reduce conj! t more))))
+  (-from-coll [factory coll]
+   (let [t (transient (empty-avl-sorted-set comparator))]
+     (persistent! (reduce conj! t coll)))))
+----
+
+Factory record types are usually not made public. What is consumed
+by the library users, and is a part of the library's API, is the
+*immutable factory object*, that is the instance of the above defined
+factory record type. Factory object is a global non-dynamic var,
+a record object that satisfies the respective Factory Protocol.
+
+Factory object has set default values for all its configuration
+options and describes their meaning and possible values in its
+documentation string.
+
+.Factory object
+[source, clojure, linesnum]
+----
+(def avl-sorted-set-factory
+  "An AVL sorted set factory instance.
+  Factory has following configuration options:
+
+  * comparator - a comparator used for sorting items. nil
+    represents a natural ordering."
+  (->AvlSortedSetFactory nil))
+----
+
+Just like for built-in types, a number of convenience functions
+are usually provided for direct instantiation of a custom data type.
+
+.Convenience constructors
+[source, clojure, linesnum]
+----
+(defn ->avl-sorted-set
+  "Returns an AVL sorted set containing given items, if any,
+  using default item ordering."
+  ([] (->collection avl-sorted-set-factory))
+  ([a] (->collection avl-sorted-set-factory a))
+  ([a b] (->collection avl-sorted-set-factory a b))
+  ([a b c] (->collection avl-sorted-set-factory a b c))
+  ([a b c & more] (->collection avl-sorted-set-factory a b c more)))
+
+(defn avl-sorted-set-by
+  "Returns an AVL sorted set with the contents of _coll_ and a custom
+  _comparator_. nil _comparator_ represents a natural ordering.
+  Copies metadata from _coll_ into returned collection."
+  [comparator coll]
+  (let [af (assoc avl-sorted-set-factory :comparator comparator)]
+    (collection af coll)))
+----
+
+As you can see in the above constructor, factory is an ordinary record
+object and can be manipulated with Clojure's built-in collection
+functions in the same way as any other associative data strucutre.
+*This greatly simplifies the resulting API and the process of
+inspecting, managing and customizing configuration options for
+concrete data types*.
+
+== Variations
+
+Factory Pattern is heavily used in the http://www.dunaj.org/[Dunaj project] and its related libraries. 
+Factory protocols are used to specify constructors for
+http://www.dunaj.org/dunaj.coll.spi.html#ICollectionFactory[collections],
+http://www.dunaj.org/dunaj.coll.spi.html#IConvolutionFactory[associative data structures],
+http://www.dunaj.org/dunaj.format.spi.html#IParserFactory[data formatters],
+http://www.dunaj.org/dunaj.format.parser.spi.html#IParserMachineFactory[parser engines],
+http://www.dunaj.org/dunaj.time.spi.html#IInstantFactory[instants],
+http://www.dunaj.org/dunaj.function.spi.html#IMemoizationFactory[memoization strategies],
+http://www.dunaj.org/dunaj.resource.spi.html#IAcquirableFactory[computer and network resources] and custom implementations of
+http://www.dunaj.org/dunaj.math.random.spi.html#IRngFactory[random number generator].
+
+There are several variations of the factory pattern possible, based
+on a particular use case. For example, if the factory has some
+required options for which no default value exists, it
+is better for a library author to provide a function that returns a
+factory object instead of just publishing factory object itself. This
+approach was used e.g. in
+http://www.dunaj.org/dunaj.resource.file.api.html#file[`file` resource factory],
+with filename as a required factory option. In this scenarion, the
+factory function usually specifies a dedicated input argument for each
+required option.
+
+There can also be multiple factory constructors or factories for one
+factory record, based on library author needs (e.g. one `HttpFactory`
+record, default factory
+http://www.dunaj.org/dunaj.resource.http.api.html#http_factory[`http-factory`],
+ and http://www.dunaj.org/dunaj.resource.http.api.html#http[`http`]
+ and http://www.dunaj.org/dunaj.resource.http.api.html#https[`https`]
+ factory constructors, creating factory objects with different default
+values for some options).
+
+In specific cases, it is also appropriate to support passing
+configuration options in the constructor function itself. This is
+particularly useful when data types are configured similarly, such as
+in case of
+http://www.dunaj.org/dunaj.math.random.api.html#rng[random number generators],
+where the seed parameter makes sense for multiple kinds of rngs.
+
+Factories work well within the Component architecture too.
+A https://github.com/wagjo/jogurt[toy project] that demostrate such
+capabilities shows the usage of
+factories https://github.com/wagjo/jogurt/blob/master/src/jogurt/system.clj#L41[here]
+ and https://github.com/wagjo/jogurt/blob/master/src/jogurt/ring/routes.clj#L52[here],
+ and uses factories to create basic dependency injection support, as
+shown
+https://github.com/wagjo/jogurt/blob/master/src/jogurt/system.clj#L37[here] and
+https://github.com/wagjo/jogurt/blob/master/src/jogurt/store/memory.clj#L45[here].
+
+This post was published on June 2015.
+Back to the http://blog.wagjo.com/[Blog home]
