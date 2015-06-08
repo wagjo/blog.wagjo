@@ -309,5 +309,37 @@ shown
 https://github.com/wagjo/jogurt/blob/master/src/jogurt/system.clj#L37[here] and
 https://github.com/wagjo/jogurt/blob/master/src/jogurt/store/memory.clj#L45[here].
 
+Last but not least, the Factory Pattern allows to use existing host
+objects as factories, in case such approach is intuitive and valuable.
+As an example, Dunaj extends its formatter factories for
+https://github.com/dunaj-project/dunaj/blob/master/src/clj/dunaj/format.clj#L101[Strings] and
+https://github.com/dunaj-project/dunaj/blob/master/src/clj/dunaj/regex.clj#L74[regular expressions],
+which enables following usage:
+
+.Using factories
+[source, clojure, linesnum]
+----
+(str (parse utf-8 [72 101 108 108 111 32 119 111 114 108 100]))
+;;=> "Hello world"
+
+(seq (parse #"(a)(sdf)" "asdffsadasdfdd"))
+;;=> (["asdf" "a" "sdf"] ["asdf" "a" "sdf"])
+
+;; parser with custom option
+(parse-whole (assoc json :key-decode-fn keyword) "{\"foo\": 3}")
+;;=> {:foo 3}
+
+;; some parser factories provide various safety features...
+(first (parse (assoc edn :container-item-limit 5000)
+              (prepend \[ (cycle ":foo "))))
+;; java.lang.IllegalStateException: parser engine error: container item count reached 5001
+
+(print "%s : %06X" "hello world" 42)
+;;=> "hello world : 00002A"
+
+(vec (print utf-16 "Hello world"))
+;; [-2 -1 0 72 0 101 0 108 0 108 0 111 0 32 0 119 0 111 0 114 0 108 0 100]
+----
+
 This post was published on June 2015.
 Back to the http://blog.wagjo.com/[Blog home]
