@@ -36,8 +36,10 @@ process and generate JWTs with it&#8217;s built-in functionalities.</p>
 <h2 id="_parsing_jwt">Parsing JWT</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>JWT encoded in JSON Web Signature (JWS) format consists of three
-Base64 encoded parts:</p>
+<p><a href="https://tools.ietf.org/html/rfc7519">JWT</a> encoded in
+<a href="https://tools.ietf.org/html/rfc7515">JSON Web Signature</a> (JWS)
+format consists of three <a href="https://tools.ietf.org/html/rfc4648">Base64 URL safe</a>
+encoded parts:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -130,6 +132,24 @@ parsed-token
 </tr></table></code></pre>
 </div>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The <code>#object[&#8230;&#8203;</code> things are collection recipes. They are not
+actual collections but they represent a transformation over existing
+collection (<code>myu-token-bytes</code> in our example). They can be reduced
+like normal collection with the benefit that there is no intermediate
+collection created, thus memory is saved and the computation is faster.
+Calling <code>seq</code> or <code>vec</code> will transform them into a normal collection,
+when such collections are needed.
+</td>
+</tr>
+</table>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -162,7 +182,7 @@ example will show how to verify HMAC signed tokens.</p>
 </div>
 <div class="paragraph">
 <p>Above function will return the signature of given data. We can use
-it to compare the computed signature with one passed inside JWT token:</p>
+it to compare with signature passed as part of JWT token:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -253,7 +273,7 @@ the signature:</p>
 </div>
 </div>
 <div class="paragraph">
-<p>Notable features of how Dunaj handles parsing/printing is that it
+<p>Notable feature of how Dunaj handles parsing/printing is that it
 uses Java&#8217;s NIO Buffers underneath and it does not create intermediate
 collections nor lazy sequences. That allows for very efficient
 data processing and enables the use in e.g. transducers. Following
@@ -293,7 +313,8 @@ the output.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>Whole example can be found in <a href="https://gist.github.com/wagjo/27ce6a34d5d5257a0790">this gist</a>, and requires Dunaj v0.6.0 or later.</p>
+<p>Whole example can be found in <a href="https://gist.github.com/wagjo/27ce6a34d5d5257a0790">this gist</a>,
+and requires Dunaj v0.6.0 or later.</p>
 </div>
 <div class="paragraph">
 <p>This post was published on June 2015.
@@ -310,7 +331,7 @@ Back to the <a href="http://blog.wagjo.com/">Blog home</a></p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-06-15 18:17:46 CEST
+Last updated 2015-06-15 19:17:31 CEST
 </div>
 </div>
 </body>
