@@ -24,7 +24,7 @@
    :proj-name "Jozef Wagner"
    :no-doc-title true
    :disqus "wagjo"
-   :teaser "Hi, I’m a business consultant and a software developer
+   :xteaser "Hi, I’m a business consultant and a software developer
 that specializes in Business Intelligence and Clojure.<br/>
 <b><a href=\"http://www.wagjo.com\">Hire me</a> and I'll come up with
 a solution for your business problems</b> that generates revenue,
@@ -51,7 +51,9 @@ new business strategies and initiatives."
     {:filename "markov" :name "Markov Text Generator in Dunaj"
      :disqus-id "markov"}
     {:filename "factory" :name "Idiomatic Factory Pattern in Clojure"
-     :disqus-id "factory"}]})
+     :disqus-id "factory"}
+    {:filename "jwt" :name "Handling JSON Web Tokens in Dunaj"
+     :disqus-id "jwt"}]})
 
 
 ;;;; Scratch
@@ -62,7 +64,5 @@ new business strategies and initiatives."
 
 
   (dunaj.doc/gen-static blog-config)
-
-
 
 )

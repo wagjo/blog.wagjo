@@ -4,6 +4,7 @@ Low frequency programming related blog of http://www.wagjo.com/[Jozef Wagner]. G
 
 ==== June
 
+* <<jwt.ad#,Handling JSON Web Tokens in Dunaj>>
 * <<factory.ad#,Idiomatic Factory Pattern in Clojure>>
 
 ==== April
