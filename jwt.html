@@ -108,9 +108,9 @@ JSON Web Tokens.</p>
 </pre></td>
   <td class="code"><pre>(<span class="keyword">def</span> <span class="function">my-token</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ</span><span class="delimiter">&quot;</span></span>)
 
-(<span class="keyword">def</span> <span class="function">token-bytes</span> (<span class="keyword">print</span> utf-8 my-token))
+(<span class="keyword">def</span> <span class="function">my-token-bytes</span> (<span class="keyword">print</span> utf-8 my-token))
 
-(<span class="keyword">def</span> <span class="function">parsed-token</span> (split-token token-bytes))
+(<span class="keyword">def</span> <span class="function">parsed-token</span> (split-token my-token-bytes))
 
 parsed-token
 <span class="comment">;; {:signed-part #object[dunaj.coll.helper.Reduciblecbus 0x73002b3d &quot;dunaj.coll.helper.Reduciblecbus@73002b3d&quot;],</span>
@@ -288,7 +288,7 @@ Back to the <a href="http://blog.wagjo.com/">Blog home</a></p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-06-15 17:43:28 CEST
+Last updated 2015-06-15 17:45:49 CEST
 </div>
 </div>
 </body>
