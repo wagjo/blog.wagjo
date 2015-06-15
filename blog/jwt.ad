@@ -11,8 +11,10 @@ process and generate JWTs with it's built-in functionalities.
 
 == Parsing JWT
 
-JWT encoded in JSON Web Signature (JWS) format consists of three
-Base64 encoded parts:
+https://tools.ietf.org/html/rfc7519[JWT] encoded in
+https://tools.ietf.org/html/rfc7515[JSON Web Signature] (JWS)
+format consists of three https://tools.ietf.org/html/rfc4648[Base64 URL safe]
+encoded parts:
 
 * JOSE header (JSON Object)
 * Claims (JSON Object)
@@ -60,6 +62,14 @@ parsed-token
 ;; {:sub "1234567890", :name "John Doe", :admin true}
 ----
 
+NOTE: The `#object[...` things are collection recipes. They are not
+actual collections but they represent a transformation over existing
+collection (`myu-token-bytes` in our example). They can be reduced
+like normal collection with the benefit that there is no intermediate
+collection created, thus memory is saved and the computation is faster.
+Calling `seq` or `vec` will transform them into a normal collection,
+when such collections are needed.
+
 == Verifying signature
 
 JWT supports several algorithms for signing claims. Following
@@ -77,7 +87,7 @@ example will show how to verify HMAC signed tokens.
 ----
 
 Above function will return the signature of given data. We can use
-it to compare the computed signature with one passed inside JWT token:
+it to compare with signature passed as part of JWT token:
 
 [source, clojure, linesnum]
 ----
@@ -125,7 +135,7 @@ the signature:
 ;; you can verify above wrapped token e.g. at http://jwt.io/
 ----
 
-Notable features of how Dunaj handles parsing/printing is that it
+Notable feature of how Dunaj handles parsing/printing is that it
 uses Java's NIO Buffers underneath and it does not create intermediate
 collections nor lazy sequences. That allows for very efficient
 data processing and enables the use in e.g. transducers. Following 
@@ -149,7 +159,8 @@ the output.
 ;; [{"typ" "JWT", "alg" "HS256"} {"sub" "1234567890", "name" "John Doe", "admin" true}]
 ----
 
-Whole example can be found in https://gist.github.com/wagjo/27ce6a34d5d5257a0790[this gist], and requires Dunaj v0.6.0 or later.
+Whole example can be found in https://gist.github.com/wagjo/27ce6a34d5d5257a0790[this gist],
+and requires Dunaj v0.6.0 or later.
 
 This post was published on June 2015.
 Back to the http://blog.wagjo.com/[Blog home]
