@@ -149,7 +149,7 @@ the output.
 ;; [{"typ" "JWT", "alg" "HS256"} {"sub" "1234567890", "name" "John Doe", "admin" true}]
 ----
 
-Whole example can be found in a https://gist.github.com/wagjo/27ce6a34d5d5257a0790[this gist], and requires Dunaj v0.6.0 or later.
+Whole example can be found in https://gist.github.com/wagjo/27ce6a34d5d5257a0790[this gist], and requires Dunaj v0.6.0 or later.
 
 This post was published on June 2015.
 Back to the http://blog.wagjo.com/[Blog home]
