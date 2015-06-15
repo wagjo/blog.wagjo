@@ -144,8 +144,8 @@ example will show how to verify HMAC signed tokens.</p>
 6
 7
 </pre></td>
-  <td class="code"><pre>(<span class="keyword">defn</span> <span class="function">secret-sign</span> <span class="symbol">:-</span> ByteColl
-  <span class="string"><span class="delimiter">&quot;</span><span class="content">Returns the result of signing data with secret.</span><span class="delimiter">&quot;</span></span>
+  <td class="code"><pre>(<span class="keyword">defn</span> <span class="function">hmac-sign</span> <span class="symbol">:-</span> ByteColl
+  <span class="string"><span class="delimiter">&quot;</span><span class="content">Returns the result of HMAC signing data with secret.</span><span class="delimiter">&quot;</span></span>
   [alg <span class="symbol">:-</span> String, secret <span class="symbol">:-</span> ByteColl, data <span class="symbol">:-</span> ByteColl]
   (<span class="keyword">let</span> [secret-key (javax.crypto.spec.SecretKeySpec. (dha/byte-array secret) alg)
         hmac (javax.crypto.Mac/getInstance alg)]
@@ -183,12 +183,12 @@ it to compare the computed signature with one passed inside JWT token:</p>
 (<span class="keyword">vec</span> (<span class="symbol">:signature</span> parsed-token))
 <span class="comment">;; [76 -107 64 -9 -109 -85 51 -79 54 112 22 -101 -33 68 76 30 -79 -61 112 71 -15 -114 -122 25 -127 -31 78 52 88 123 30 4]</span>
 
-(secret-sign <span class="string"><span class="delimiter">&quot;</span><span class="content">HmacSHA256</span><span class="delimiter">&quot;</span></span> secret-bytes (<span class="symbol">:signed-part</span> parsed-token))
+(hmac-sign <span class="string"><span class="delimiter">&quot;</span><span class="content">HmacSHA256</span><span class="delimiter">&quot;</span></span> secret-bytes (<span class="symbol">:signed-part</span> parsed-token))
 <span class="comment">;; (76 -107 64 -9 -109 -85 51 -79 54 112 22 -101 -33 68 76 30 -79 -61 112 71 -15 -114 -122 25 -127 -31 78 52 88 123 30 4)</span>
 
 <span class="comment">;; NOTE: equality comparison prone to timing attacks</span>
-(<span class="keyword">=</span> (<span class="keyword">seq</span> (<span class="keyword">vec</span> (<span class="symbol">:signature</span> parsed-token)))
-   (<span class="keyword">seq</span> (secret-sign <span class="string"><span class="delimiter">&quot;</span><span class="content">HmacSHA256</span><span class="delimiter">&quot;</span></span> secret-bytes (<span class="symbol">:signed-part</span> parsed-token))))
+(<span class="keyword">=</span> (<span class="keyword">seq</span> (<span class="symbol">:signature</span> parsed-token))
+   (<span class="keyword">seq</span> (hmac-sign <span class="string"><span class="delimiter">&quot;</span><span class="content">HmacSHA256</span><span class="delimiter">&quot;</span></span> secret-bytes (<span class="symbol">:signed-part</span> parsed-token))))
 <span class="comment">;; true</span></pre></td>
 </tr></table></code></pre>
 </div>
@@ -225,7 +225,7 @@ the signature:</p>
   (<span class="keyword">let</span> [pf #(<span class="keyword">print</span> base64-safe (<span class="keyword">print</span> utf-8 (print-one json %)))
         header {<span class="symbol">:typ</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">JWT</span><span class="delimiter">&quot;</span></span> <span class="symbol">:alg</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">HS256</span><span class="delimiter">&quot;</span></span>}
         signed-part (<span class="keyword">concat</span> (pf header) [(iDOT)] (pf claims))
-        signature (secret-sign <span class="string"><span class="delimiter">&quot;</span><span class="content">HmacSHA256</span><span class="delimiter">&quot;</span></span> secret signed-part)]
+        signature (hmac-sign <span class="string"><span class="delimiter">&quot;</span><span class="content">HmacSHA256</span><span class="delimiter">&quot;</span></span> secret signed-part)]
     (<span class="keyword">vec</span> (<span class="keyword">concat</span> signed-part [(iDOT)] (<span class="keyword">print</span> base64-safe signature)))))
 
 (<span class="keyword">def</span> <span class="function">new-token-bytes</span> (jwt {<span class="symbol">:sub</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">1234567890</span><span class="delimiter">&quot;</span></span>, <span class="symbol">:name</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">John Doe</span><span class="delimiter">&quot;</span></span>, <span class="symbol">:admin</span> <span class="predefined-constant">false</span>} secret-bytes))
@@ -288,7 +288,7 @@ Back to the <a href="http://blog.wagjo.com/">Blog home</a></p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-06-15 16:51:55 CEST
+Last updated 2015-06-15 17:43:28 CEST
 </div>
 </div>
 </body>
