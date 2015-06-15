@@ -105,18 +105,24 @@ JSON Web Tokens.</p>
 13
 14
 15
+16
+17
+18
 </pre></td>
-  <td class="code"><pre>(<span class="keyword">def</span> <span class="function">my-token</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ</span><span class="delimiter">&quot;</span></span>)
+  <td class="code"><pre>(<span class="keyword">def</span> <span class="function">my-token</span>
+  (-&gt;str <span class="string"><span class="delimiter">&quot;</span><span class="content">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.</span><span class="delimiter">&quot;</span></span>
+         <span class="string"><span class="delimiter">&quot;</span><span class="content">eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.</span><span class="delimiter">&quot;</span></span>
+         <span class="string"><span class="delimiter">&quot;</span><span class="content">TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ</span><span class="delimiter">&quot;</span></span>))
 
 (<span class="keyword">def</span> <span class="function">my-token-bytes</span> (<span class="keyword">print</span> utf-8 my-token))
 
 (<span class="keyword">def</span> <span class="function">parsed-token</span> (split-token my-token-bytes))
 
 parsed-token
-<span class="comment">;; {:signed-part #object[dunaj.coll.helper.Reduciblecbus 0x73002b3d &quot;dunaj.coll.helper.Reduciblecbus@73002b3d&quot;],</span>
+<span class="comment">;; {:signed-part #object[dunaj.coll.helper.Reduciblecbus 0x73002b3d &quot;...&quot;],</span>
 <span class="comment">;;  :header {:alg &quot;HS256&quot;, :typ &quot;JWT&quot;},</span>
 <span class="comment">;;  :claims {:sub &quot;1234567890&quot;, :name &quot;John Doe&quot;, :admin true},</span>
-<span class="comment">;;  :signature #object[dunaj.coll.helper.Reduciblecbus 0x28a24be3 &quot;dunaj.coll.helper.Reduciblecbus@28a24be3&quot;]</span>
+<span class="comment">;;  :signature #object[dunaj.coll.helper.Reduciblecbus 0x28a24be3 &quot;...&quot;]</span>
 <span class="comment">;; }</span>
 
 (<span class="symbol">:claims</span> parsed-token)
@@ -175,16 +181,20 @@ it to compare the computed signature with one passed inside JWT token:</p>
 12
 13
 14
+15
+16
 </pre></td>
   <td class="code"><pre>(<span class="keyword">def</span> <span class="function">my-secret</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">secret</span><span class="delimiter">&quot;</span></span>)
 
 (<span class="keyword">def</span> <span class="function">secret-bytes</span> (<span class="keyword">print</span> utf-8 my-secret))
 
 (<span class="keyword">vec</span> (<span class="symbol">:signature</span> parsed-token))
-<span class="comment">;; [76 -107 64 -9 -109 -85 51 -79 54 112 22 -101 -33 68 76 30 -79 -61 112 71 -15 -114 -122 25 -127 -31 78 52 88 123 30 4]</span>
+<span class="comment">;; [76 -107 64 -9 -109 -85 51 -79 54 112 22 -101 -33 68</span>
+<span class="comment">;;  76 30 -79 -61 112 71 -15 -114 -122 25 -127 -31 78 52 88 123 30 4]</span>
 
 (hmac-sign <span class="string"><span class="delimiter">&quot;</span><span class="content">HmacSHA256</span><span class="delimiter">&quot;</span></span> secret-bytes (<span class="symbol">:signed-part</span> parsed-token))
-<span class="comment">;; (76 -107 64 -9 -109 -85 51 -79 54 112 22 -101 -33 68 76 30 -79 -61 112 71 -15 -114 -122 25 -127 -31 78 52 88 123 30 4)</span>
+<span class="comment">;; (76 -107 64 -9 -109 -85 51 -79 54 112 22 -101 -33 68</span>
+<span class="comment">;;  76 30 -79 -61 112 71 -15 -114 -122 25 -127 -31 78 52 88 123 30 4)</span>
 
 <span class="comment">;; NOTE: equality comparison prone to timing attacks</span>
 (<span class="keyword">=</span> (<span class="keyword">seq</span> (<span class="symbol">:signature</span> parsed-token))
@@ -219,6 +229,9 @@ the signature:</p>
 11
 12
 13
+14
+15
+16
 </pre></td>
   <td class="code"><pre>(<span class="keyword">defn</span> <span class="function">jwt</span> <span class="symbol">:-</span> ByteColl
   [claims <span class="symbol">:-</span> {}, secret <span class="symbol">:-</span> ByteColl]
@@ -228,11 +241,14 @@ the signature:</p>
         signature (hmac-sign <span class="string"><span class="delimiter">&quot;</span><span class="content">HmacSHA256</span><span class="delimiter">&quot;</span></span> secret signed-part)]
     (<span class="keyword">vec</span> (<span class="keyword">concat</span> signed-part [(iDOT)] (<span class="keyword">print</span> base64-safe signature)))))
 
-(<span class="keyword">def</span> <span class="function">new-token-bytes</span> (jwt {<span class="symbol">:sub</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">1234567890</span><span class="delimiter">&quot;</span></span>, <span class="symbol">:name</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">John Doe</span><span class="delimiter">&quot;</span></span>, <span class="symbol">:admin</span> <span class="predefined-constant">false</span>} secret-bytes))
+(<span class="keyword">def</span> <span class="function">new-token-bytes</span>
+  (jwt {<span class="symbol">:sub</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">1234567890</span><span class="delimiter">&quot;</span></span>, <span class="symbol">:name</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">John Doe</span><span class="delimiter">&quot;</span></span>, <span class="symbol">:admin</span> <span class="predefined-constant">false</span>} secret-bytes))
 
 (<span class="keyword">def</span> <span class="function">new-token</span> (<span class="keyword">str</span> (parse utf-8 new-token-bytes)))
-<span class="comment">;; eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOmZhbHNlfQ==.S_mcs280KaxVTd5I3-kPeSwyrtOXZJHqfPF5RH2gQV0=</span>
-<span class="comment">;; you can verify above token e.g. at http://jwt.io/</span></pre></td>
+<span class="comment">;; eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.</span>
+<span class="comment">;; eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOmZhbHNlfQ==.</span>
+<span class="comment">;; S_mcs280KaxVTd5I3-kPeSwyrtOXZJHqfPF5RH2gQV0=</span>
+<span class="comment">;; you can verify above wrapped token e.g. at http://jwt.io/</span></pre></td>
 </tr></table></code></pre>
 </div>
 </div>
@@ -257,12 +273,18 @@ the output.</p>
 7
 8
 9
+<strong>10</strong>
+11
+12
 </pre></td>
   <td class="code"><pre>(<span class="keyword">let</span> [xf (<span class="keyword">comp</span> (parse base64-safe)
                (parse utf-8)
                (parse json))
       c (chan <span class="integer">100</span> xf)
-      v (<span class="keyword">vec</span> (<span class="keyword">print</span> utf-8 <span class="string"><span class="delimiter">&quot;</span><span class="content">eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9</span><span class="delimiter">&quot;</span></span>))]
+      v (<span class="keyword">vec</span> (<span class="keyword">print</span> utf-8
+               (-&gt;str <span class="string"><span class="delimiter">&quot;</span><span class="content">eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9eyJzdWIiOi</span><span class="delimiter">&quot;</span></span>
+                      <span class="string"><span class="delimiter">&quot;</span><span class="content">IxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRt</span><span class="delimiter">&quot;</span></span>
+                      <span class="string"><span class="delimiter">&quot;</span><span class="content">aW4iOnRydWV9</span><span class="delimiter">&quot;</span></span>)))]
   (&lt;!! (onto-chan! c v))
   (thread (pp! (&lt;!! (reduce! <span class="keyword">conj</span> [] c))))
   (close! c))
@@ -288,7 +310,7 @@ Back to the <a href="http://blog.wagjo.com/">Blog home</a></p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-06-15 17:53:24 CEST
+Last updated 2015-06-15 18:02:41 CEST
 </div>
 </div>
 </body>
