@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge"><![endif]-->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 1.5.2">
+<title>Handling JSON Web Tokens in Dunaj</title>
+<link rel="stylesheet" href="./dd.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.2.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="./coderay-asciidoctor.css">
+</head>
+<body class="article">
+<div id="header">
+<h1>Handling JSON Web Tokens in Dunaj</h1>
+</div>
+<div id="content">
+<header id="dd-header"><div id="dd-logo"><a href="http://www.wagjo.com/"><img src="logo.png"></img>Jozef Wagner</a></div><div id="dd-mmenu"><a class="dd-mmlink" href="http://wagjo.com"><i class="fa fa-home dd-mmsh"></i> <span>Homepage</span></a><a class="dd-mmlink" href="http://blog.wagjo.com"><i class="fa fa-pencil dd-mmsh"></i> <span>Blog</span></a><a class="dd-mmlink" href="http://wagjo.com/consulting"><i class="fa fa-dot-circle-o dd-mmsh"></i> <span>Consulting Services</span></a><a class="dd-mmlink" href="http://blog.wagjo.com/feed.xml"><i class="fa fa-rss dd-mmsh"></i> <span>RSS Feed</span></a></div></header><div id="dd-flex"><section id="dd-content"><div class="dd-over" tabindex="-1" id="dd-focus"><div id="header"><h1 id="dd-top">Handling JSON Web Tokens in Dunaj</h1><div class="details">Copyright © 2015, &nbsp;<span class="author">Jozef Wagner</span><br></div></div><div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>Dunaj enhances Clojure by providing abstractions for parsing and
+printing, together with implementations for commonly used formats such
+as Unicode charsets, Base64 or JSON. As Dunaj also provides
+additional abstractions and facilities for primitive collections,
+one can use Dunaj to create simple yet performant libraries that
+parse custom formats or handle low level byte collections.</p>
+</div>
+<div class="paragraph">
+<p><a href="http://jwt.io/">JSON Web Token</a> is a new format for representing
+authenticated claims. This short post will show how Dunaj can
+process and generate JWTs with it&#8217;s built-in functionalities.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_parsing_jwt">Parsing JWT</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>JWT encoded in JSON Web Signature (JWS) format consists of three
+Base64 encoded parts:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>JOSE header (JSON Object)</p>
+</li>
+<li>
+<p>Claims (JSON Object)</p>
+</li>
+<li>
+<p>Signature</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>As Dunaj provides built-in data formatters for both JSON and Base64,
+parsing JWT is dead simple:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+<strong>10</strong>
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">defn</span> <span class="function">split-token</span> <span class="symbol">:-</span> KeywordMap
+  <span class="string"><span class="delimiter">&quot;</span><span class="content">Parses JWT token and returns map with its parts.</span><span class="delimiter">&quot;</span></span>
+  [token <span class="symbol">:-</span> ByteColl]
+  (<span class="keyword">let</span> [parts (<span class="keyword">vec</span> (partition-by #(i=<span class="keyword">=</span> (iDOT) %) token))
+        kjson (<span class="keyword">assoc</span> json <span class="symbol">:key-decode-fn</span> <span class="keyword">keyword</span>)
+        pf #(parse-whole kjson (parse utf-8 (parse base64-safe %)))]
+    {<span class="symbol">:signed-part</span> (concat* (<span class="keyword">take</span> <span class="integer">3</span> parts))
+     <span class="symbol">:header</span> (pf (<span class="keyword">first</span> parts))
+     <span class="symbol">:claims</span> (pf (<span class="keyword">nth</span> parts <span class="integer">2</span>))
+     <span class="symbol">:signature</span> (parse base64-safe (<span class="keyword">nth</span> parts <span class="integer">4</span> <span class="predefined-constant">nil</span>))}))</pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The above function is all that is needed to extract claims from the
+JSON Web Tokens.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+<strong>10</strong>
+11
+12
+13
+14
+15
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">def</span> <span class="function">my-token</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ</span><span class="delimiter">&quot;</span></span>)
+
+(<span class="keyword">def</span> <span class="function">token-bytes</span> (<span class="keyword">print</span> utf-8 my-token))
+
+(<span class="keyword">def</span> <span class="function">parsed-token</span> (split-token token-bytes))
+
+parsed-token
+<span class="comment">;; {:signed-part #object[dunaj.coll.helper.Reduciblecbus 0x73002b3d &quot;dunaj.coll.helper.Reduciblecbus@73002b3d&quot;],</span>
+<span class="comment">;;  :header {:alg &quot;HS256&quot;, :typ &quot;JWT&quot;},</span>
+<span class="comment">;;  :claims {:sub &quot;1234567890&quot;, :name &quot;John Doe&quot;, :admin true},</span>
+<span class="comment">;;  :signature #object[dunaj.coll.helper.Reduciblecbus 0x28a24be3 &quot;dunaj.coll.helper.Reduciblecbus@28a24be3&quot;]</span>
+<span class="comment">;; }</span>
+
+(<span class="symbol">:claims</span> parsed-token)
+<span class="comment">;; {:sub &quot;1234567890&quot;, :name &quot;John Doe&quot;, :admin true}</span></pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_verifying_signature">Verifying signature</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>JWT supports several algorithms for signing claims. Following
+example will show how to verify HMAC signed tokens.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">defn</span> <span class="function">secret-sign</span> <span class="symbol">:-</span> ByteColl
+  <span class="string"><span class="delimiter">&quot;</span><span class="content">Returns the result of signing data with secret.</span><span class="delimiter">&quot;</span></span>
+  [alg <span class="symbol">:-</span> String, secret <span class="symbol">:-</span> ByteColl, data <span class="symbol">:-</span> ByteColl]
+  (<span class="keyword">let</span> [secret-key (javax.crypto.spec.SecretKeySpec. (dha/byte-array secret) alg)
+        hmac (javax.crypto.Mac/getInstance alg)]
+    (<span class="keyword">.</span>init hmac secret-key)
+    (dha/adapt (<span class="keyword">.</span>doFinal hmac (dha/byte-array data)))))</pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Above function will return the signature of given data. We can use
+it to compare the computed signature with one passed inside JWT token:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+<strong>10</strong>
+11
+12
+13
+14
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">def</span> <span class="function">my-secret</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">secret</span><span class="delimiter">&quot;</span></span>)
+
+(<span class="keyword">def</span> <span class="function">secret-bytes</span> (<span class="keyword">print</span> utf-8 my-secret))
+
+(<span class="keyword">vec</span> (<span class="symbol">:signature</span> parsed-token))
+<span class="comment">;; [76 -107 64 -9 -109 -85 51 -79 54 112 22 -101 -33 68 76 30 -79 -61 112 71 -15 -114 -122 25 -127 -31 78 52 88 123 30 4]</span>
+
+(secret-sign <span class="string"><span class="delimiter">&quot;</span><span class="content">HmacSHA256</span><span class="delimiter">&quot;</span></span> secret-bytes (<span class="symbol">:signed-part</span> parsed-token))
+<span class="comment">;; (76 -107 64 -9 -109 -85 51 -79 54 112 22 -101 -33 68 76 30 -79 -61 112 71 -15 -114 -122 25 -127 -31 78 52 88 123 30 4)</span>
+
+<span class="comment">;; NOTE: equality comparison prone to timing attacks</span>
+(<span class="keyword">=</span> (<span class="keyword">seq</span> (<span class="keyword">vec</span> (<span class="symbol">:signature</span> parsed-token)))
+   (<span class="keyword">seq</span> (secret-sign <span class="string"><span class="delimiter">&quot;</span><span class="content">HmacSHA256</span><span class="delimiter">&quot;</span></span> secret-bytes (<span class="symbol">:signed-part</span> parsed-token))))
+<span class="comment">;; true</span></pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_generating_jwt">Generating JWT</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The creation of custom JWT is quite simple too. All you need to do
+is to encode your header and claims in Base64 JSON and append
+the signature:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+<strong>10</strong>
+11
+12
+13
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">defn</span> <span class="function">jwt</span> <span class="symbol">:-</span> ByteColl
+  [claims <span class="symbol">:-</span> {}, secret <span class="symbol">:-</span> ByteColl]
+  (<span class="keyword">let</span> [pf #(<span class="keyword">print</span> base64-safe (<span class="keyword">print</span> utf-8 (print-one json %)))
+        header {<span class="symbol">:typ</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">JWT</span><span class="delimiter">&quot;</span></span> <span class="symbol">:alg</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">HS256</span><span class="delimiter">&quot;</span></span>}
+        signed-part (<span class="keyword">concat</span> (pf header) [(iDOT)] (pf claims))
+        signature (secret-sign <span class="string"><span class="delimiter">&quot;</span><span class="content">HmacSHA256</span><span class="delimiter">&quot;</span></span> secret signed-part)]
+    (<span class="keyword">vec</span> (<span class="keyword">concat</span> signed-part [(iDOT)] (<span class="keyword">print</span> base64-safe signature)))))
+
+(<span class="keyword">def</span> <span class="function">new-token-bytes</span> (jwt {<span class="symbol">:sub</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">1234567890</span><span class="delimiter">&quot;</span></span>, <span class="symbol">:name</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">John Doe</span><span class="delimiter">&quot;</span></span>, <span class="symbol">:admin</span> <span class="predefined-constant">false</span>} secret-bytes))
+
+(<span class="keyword">def</span> <span class="function">new-token</span> (<span class="keyword">str</span> (parse utf-8 new-token-bytes)))
+<span class="comment">;; eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.pcHcZspUvuiqIPVB_i_qmcvCJv63KLUgIAKIlXI1gY8=</span>
+<span class="comment">;; you can verify above token e.g. at http://jwt.io/</span></pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Notable features of how Dunaj handles parsing/printing is that it
+uses Java&#8217;s NIO Buffers underneath and it does not create intermediate
+collections nor lazy sequences. That allows for very efficient
+data processing and enables the use in e.g. transients. Following
+example creates <code>core.async</code> channel that takes bytes that represent
+Base64 encoded JSON objects and produces Clojure data structures on
+the output.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="clojure"><table class="CodeRay"><tr>
+  <td class="line-numbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+</pre></td>
+  <td class="code"><pre>(<span class="keyword">let</span> [xf (<span class="keyword">comp</span> (parse base64-safe)
+               (parse utf-8)
+               (parse json))
+      c (chan <span class="integer">100</span> xf)
+      v (<span class="keyword">vec</span> (<span class="keyword">print</span> utf-8 <span class="string"><span class="delimiter">&quot;</span><span class="content">eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9</span><span class="delimiter">&quot;</span></span>))]
+  (&lt;!! (onto-chan! c v))
+  (thread (pp! (&lt;!! (reduce! <span class="keyword">conj</span> [] c))))
+  (close! c))
+<span class="comment">;; [{&quot;typ&quot; &quot;JWT&quot;, &quot;alg&quot; &quot;HS256&quot;} {&quot;sub&quot; &quot;1234567890&quot;, &quot;name&quot; &quot;John Doe&quot;, &quot;admin&quot; true}]</span></pre></td>
+</tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Whole example can be found in a <a href="https://gist.github.com/wagjo/27ce6a34d5d5257a0790">this gist</a>, and requires Dunaj v0.6.0 or later.</p>
+</div>
+<div class="paragraph">
+<p>This post was published on June 2015.
+Back to the <a href="http://blog.wagjo.com/">Blog home</a></p>
+</div>
+</div>
+</div><div id="disqus_thread"></div><script>var disqus_shortname = 'wagjo'; var disqus_identifier = 'jwt'; (function() {
+                    var dsq = document.createElement('script');
+                    dsq.type = 'text/javascript'; dsq.async = true;
+                    dsq.src = '//' + disqus_shortname +
+                              '.disqus.com/embed.js';
+                    (document.getElementsByTagName('head')[0] ||
+                     document.getElementsByTagName('body')[0]).appendChild(dsq);})();</script></div></section></div><script>window.onload = function() {document.getElementById('dd-focus').focus();}</script>
+</div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2015-06-15 15:12:48 CEST
+</div>
+</div>
+</body>
+</html>

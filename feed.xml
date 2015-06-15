@@ -7,6 +7,17 @@
   <ttl>1800</ttl>
 
  <item>
+  <title>Handling JSON Web Tokens in Dunaj</title>
+  <description>JSON Web Token is a new format for representing
+  authenticated claims. This short post will show how Dunaj can
+  process and generate JWTs with it's built-in
+  functionalities.</description> 
+  <link>http://blog.wagjo.com/jwt.html</link>
+  <guid isPermaLink="true">http://blog.wagjo.com/jwt.html</guid>
+  <pubDate>Mon, 15 Jun 2015 13:00:00 +0000</pubDate>
+ </item>
+ 
+ <item>
   <title>Idiomatic Factory Pattern in Clojure</title>
   <description>Factory Pattern is a creational design pattern that
   adheres to Clojure's design and philosophy. It helps to formalize
